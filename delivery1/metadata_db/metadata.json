@@ -1,0 +1,34 @@
+{
+    "org1:doc2": {
+        "document_handle": "123452",
+        "name": "document1",
+        "create_date": "2021-01-01",
+        "creator": "user1",
+        "file_handle": "123456",
+        "acl": [
+            [
+                "DOC_READ",
+                "DOC_DELETE"
+            ]
+        ],
+        "deleter": null,
+        "alg": "EC 256",
+        "key": "12345678910"
+    },
+    "org1:doc1": {
+        "document_handle": "123452",
+        "name": "document1",
+        "create_date": "2021-01-01",
+        "creator": "user77",
+        "file_handle": "123456",
+        "acl": [
+            [
+                "DOC_READ",
+                "DOC_DELETE"
+            ]
+        ],
+        "deleter": null,
+        "alg": "EC 256",
+        "key": "12345678910"
+    }
+}
