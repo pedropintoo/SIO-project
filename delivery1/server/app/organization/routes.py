@@ -77,12 +77,12 @@ def update_subject_status(username):
         ...
 
 @organization_bp.route('/subjects/<string:username>/status', methods=['GET'])
-def update_subject_status(username):
+def list_subject_status(username):
     # TODO: Logic to show the status of a subject
     ...
 
 @organization_bp.route('/subjects/status', methods=['GET'])
-def update_subject_status():
+def list_all_subjects_status():
     # TODO: Logic to show the status of all subjects
     ...
 
