@@ -14,6 +14,9 @@ metadata = Metadata(
     key='12345678910'
 )
 metadata_db.insert_metadata('org1', 'doc2', metadata)
-print(metadata_db.get_metadata('org1', 'doc2'))
+metadata_db.insert_metadata('org1', 'doc3', metadata)
+metadata_db.insert_metadata('org2', 'doc1', metadata)
+
+# print(metadata_db.get_metadata('org1', 'doc2'))
 # metadata_db.delete_metadata('org1', 'doc2', 'user1')
 # print(metadata_db.get_metadata('org1', 'doc2'))
