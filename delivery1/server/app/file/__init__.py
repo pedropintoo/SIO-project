@@ -1,6 +1,6 @@
-# app/file/__init__.py
+# app/files/__init__.py
 from flask import Blueprint
 
-file_bp = Blueprint('file', __name__)
+file_bp = Blueprint('files', __name__)
 
 from . import routes 

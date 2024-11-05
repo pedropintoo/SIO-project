@@ -1,4 +1,4 @@
-# api path: /api/v1/session/ 
+# api path: /api/v1/sessions/ 
 from . import session_bp
 
 @session_bp.route('/roles', methods=['POST'])
