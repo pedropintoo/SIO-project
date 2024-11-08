@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from inspect import signature
-from commands import Auth, Session, Organization, File
-
+from client.commands import Auth, Session, Organization, File
+import sys
 
 class CommandsParser():
 
@@ -301,23 +301,23 @@ class CommandsParser():
         """This command adds a permission to a role in the organization with the current session.
 
         Usage:
-            rep_add_permission <session_file> <role> <permission>
+            rep_add_permission <session_file> <role> <permissionOrUsername>
         """
-        subparser = self.parser.add_parser('rep_add_permission', help='This command adds a permission to a role in the organization with the current session.')
+        subparser = self.parser.add_parser('rep_add_permission', help='This command adds a permission or username to a role in the organization with the current session.')
         subparser.add_argument('session_file', help='Path to the session file')
         subparser.add_argument('role', help='Role to add permission to')
-        subparser.add_argument('permission', help='Permission to add')
+        subparser.add_argument('permissionOrUsername', help='Permission or username to add to the role')
 
     def parser_rep_remove_permission(self):
-        """This command removes a permission from a role in the organization with the current session.
+        """This command removes a permission or username from a role in the organization with the current session.
 
         Usage:
-            rep_remove_permission <session_file> <role> <permission>
+            rep_remove_permission <session_file> <role> <permissionOrUsername>
         """
-        subparser = self.parser.add_parser('rep_remove_permission', help='This command removes a permission from a role in the organization with the current session.')
+        subparser = self.parser.add_parser('rep_remove_permission', help='This command removes a permission or username from a role in the organization with the current session.')
         subparser.add_argument('session_file', help='Path to the session file')
         subparser.add_argument('role', help='Role to remove permission from')
-        subparser.add_argument('permission', help='Permission to remove')
+        subparser.add_argument('permissionOrUsername', help='Permission or username to remove from the role')
 
     def parser_rep_add_doc(self):
         """This command adds a document to the organization with the current session.
