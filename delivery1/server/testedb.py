@@ -1,4 +1,4 @@
-from metadata_db.metadata_db import MetadataDB
+from server.metadata_db.metadata_db import MetadataDB
 from views.metadata import Metadata, AccessControlList, DocumentPermissions
 
 metadata_db = MetadataDB('metadata_db/metadata.json')
