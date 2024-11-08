@@ -1,0 +1,16 @@
+{
+    "org1": {
+        "organization": "Organization One",
+        "username": "admin1",
+        "name": "Admin One",
+        "email": "admin1@org1.com",
+        "public_key_file": "path/to/org1_public_key.pem"
+    },
+    "org2": {
+        "organization": "Organization Two",
+        "username": "admin2",
+        "name": "Admin Two",
+        "email": "admin2@org2.com",
+        "public_key_file": "path/to/org2_public_key.pem"
+    }
+}
