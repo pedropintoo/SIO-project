@@ -1,8 +1,6 @@
 # api path: /api/v1/auth/ 
 from . import auth_bp
 from flask import request, jsonify
-
-# I want to import OrganizationDB from ../organization_db/organization_db.py
 from ...organization_db.organization_db import OrganizationDB
 
 

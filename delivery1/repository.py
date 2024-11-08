@@ -1,10 +1,5 @@
-# run.py
-from server.app import create_app
-
-app = create_app()
+from server.run import AppFlask
 
 if __name__ == '__main__':
-    app.run(debug=True)
-    app.config["organization_db"] = "../organization_db"
-
+    appFlask = AppFlask()
 

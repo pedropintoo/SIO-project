@@ -1,12 +1,14 @@
 # api path: /api/v1/organizations/ 
 from . import organization_bp
 from flask import request
-import app
+from server.organization_db.organization_db import OrganizationDB
+
+organization_db = OrganizationDB("server/organization_db/organizations.json")
 
 @organization_bp.route('/', methods=['GET'])
 def list_orgs():
     # TODO: Logic to list organizations
-    
+    return organization_db.get_all_organizations()
     
 # Roles Endpoints
 @organization_bp.route('/roles/<string:role>/subjects', methods=['GET'])

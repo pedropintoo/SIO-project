@@ -41,3 +41,12 @@ class OrganizationDB:
             pass  # File does not exist or is empty
 
         return None
+
+    def get_all_organizations(self):
+        """Get all organizations from the json file"""
+        try:
+            with open(self.json_file, 'r') as file:
+                data = json.load(file)
+                return data
+        except (FileNotFoundError, json.JSONDecodeError):
+            pass

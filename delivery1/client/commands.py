@@ -17,6 +17,8 @@ class Auth(Command):
     def rep_create_org(self, organization, username, name, email, public_key_file):
         """This command creates an organization in a Repository and defines its first subject."""
         # POST /api/v1/auth/organization
+        with open(public_key_file, "r"):
+            
         return requests.post(f'{self.server_address}/api/v1/auth/organization', json={'organization': organization, 'username': username, 'name': name, 'email': email, 'public_key_file': public_key_file})
 
     def rep_create_session(self, organization, username, password, credentials_file, session_file):

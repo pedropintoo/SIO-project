@@ -1,5 +1,5 @@
 {
-    "org1": {
+    "Organization One": {
         "doc2": {
             "document_handle": "123452",
             "name": "document1",
@@ -33,7 +33,7 @@
             "key": "12345678910"
         }
     },
-    "org2": {
+    "Organization Two": {
         "doc1": {
             "document_handle": "123452",
             "name": "document1",
