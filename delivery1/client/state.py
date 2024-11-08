@@ -3,7 +3,7 @@ import sys
 import argparse
 import logging
 import json
-from parser import CommandsParser
+from client.parser import CommandsParser
 
 
 def load_state(logger):
@@ -70,7 +70,7 @@ def parse_args(logger, state):
 
     return args, state
 
-def save(state):
+def save(logger, state):
     state_dir = os.path.join(os.path.expanduser('~'), '.sio')
     state_file = os.path.join(state_dir, 'state.json')
 

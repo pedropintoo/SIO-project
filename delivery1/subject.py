@@ -1,7 +1,7 @@
 import sys
 import logging
-from state import load_state, parse_env, parse_args, save
-from parser import CommandsParser
+from client.state import load_state, parse_env, parse_args, save
+from client.parser import CommandsParser
 
 logging.basicConfig(format='%(levelname)s\t- %(message)s')
 logger = logging.getLogger()
@@ -25,6 +25,6 @@ if 'REP_PUB_KEY' not in state:
 CommandsParser.execute(logger, state, args)
 
 ## Save Persistent State
-save(state)
+save(logger, state)
 
 # --------------------------------------------------------------------
