@@ -76,7 +76,9 @@ class Organization(Command):
     def rep_list_role_subjects(self, session_file, role):
         """This command lists the subjects of a role of the organization with which I have currently a session"""
         # GET /api/v1/organizations/roles/<string:role>/subjects
-        return requests.get(f'{self.server_address}/api/v1/organizations/roles/{role}/subjects', json={'session_file': session_file})
+        with open(session_file, 'rb') as f:
+            session = f.read()
+        return requests.get(f'{self.server_address}/api/v1/organizations/roles/{role}/subjects', json={'session': session})
     
     def rep_list_subject_roles(self, session_file, username):
         """This command lists the roles of a subject of the organization with which I have currently a session."""
