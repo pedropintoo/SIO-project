@@ -1,5 +1,9 @@
 import requests
 from views.roles import DocumentPermissions
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+import hashlib
 
 class Command:
     def __init__(self, logger, state):
@@ -14,7 +18,32 @@ class Local(Command):
         super().__init__(logger, state) 
     
     def rep_subject_credentials(self, password, credentials_file):
-        ...
+        # Hash the password 
+        password_hash = hashlib.sha256(password.encode()).digest()
+
+        password_hash_to_int = int.from_bytes(password_hash, 'big')
+
+        # Ensure the private key is within the valid range for the curve 
+        curve = ec.SECP256R1()
+        max_private_key = curve.key_size - 1 
+        if password_hash_to_int > max_private_key:
+            password_hash_to_int = password_hash_to_int % max_private_key
+
+        private_key = ec.derive_private_key(password_hash_to_int, curve, default_backend())
+        self.logger.debug(f'Private key created successfully') 
+
+        # Generate the corresponding public key
+        public_key = private_key.public_key()
+        self.logger.debug(f'Public key created successfully')
+
+        public_key_bytes = public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        # Store the public key in the credentials file
+        with open(credentials_file, 'wb') as f:
+            f.write(public_key_bytes)
+        self.logger.debug(f'Public key stored in credentials file: {credentials_file}')
     
     def rep_decrypt_file(self, enctrypted_file, encryption_metadata):
         ...
