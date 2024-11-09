@@ -1,14 +1,23 @@
+import os
 from pymongo import MongoClient
 
 class OrganizationsDB:
     def __init__(self):
+         # Get the MongoDB URI from environment variables
+        mongo_uri = os.getenv('MONGO_URI')
+        print("<<<<", mongo_uri)
         # Connect to the MongoDB server
-        self.client = MongoClient("mongodb://localhost:27017/")
+        self.client = MongoClient(mongo_uri)
+        print(">>>>", self.client)
         # Access the 'organizations' database
         self.db = self.client.organizations
         # Access the 'organizations' collection
         self.collection = self.db.data
-
+ 
+    def get_organization_name(self, session_id):
+        # TODO: Logic to get organization name from session
+        pass
+    
     ### Subject Management ###
     def add_subject(self, organization_name, subject_name, subject_details):
         result = self.collection.update_one(
@@ -39,6 +48,13 @@ class OrganizationsDB:
         )
         return result.modified_count
 
+    def retrieve_role(self, organization_name, role_name):
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"roles": {role_name: 1}}
+        )
+        return result
+
     ### Organization Management ###
     def in_database(self, organization_name):
         return self.collection.find_one({"name": organization_name}) is not None
@@ -50,8 +66,14 @@ class OrganizationsDB:
         return self.collection.find_one({"name": organization_name})
     
     def get_all_organizations(self):
-        return self.collection.find()
+        cursor = self.collection.find()
+    
+        organizations = []
+        for org in cursor:
+            org['_id'] = str(org['_id'])
+            organizations.append(org)
 
+        return organizations
     ### Documents Metadata Management ###
     def insert_metadata(self, organization_name, document_handle, metadata_details):
         result = self.collection.update_one(

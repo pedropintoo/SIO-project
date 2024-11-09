@@ -1,20 +1,34 @@
 # api path: /api/v1/organizations/ 
 from . import organization_bp
-from flask import request
+from flask import jsonify, request
 from organizations_db.organizations_db import OrganizationsDB
 
 organization_db = OrganizationsDB()
 
 @organization_bp.route('/', methods=['GET'])
 def list_orgs():
-    # TODO: Logic to list organizations
-    return organization_db.get_all_organizations()
+    return jsonify(organization_db.get_all_organizations()), 200
     
 # Roles Endpoints
 @organization_bp.route('/roles/<string:role>/subjects', methods=['GET'])
 def list_subjects(role):
     # TODO: Logic to get subjects in one of my organization's roles
-    ...
+    session = request.args.get('session')
+
+    # Get organization name from session
+    organization_name = organization_db.get_organization_name(session)
+
+    role_data = organization_db.retrieve_role(role)
+    
+    if not role_data:
+        return jsonify({'error': f'Role "{role}" not found in organization "{organization_name}"'}), 404
+    
+    subjects = role_data.get('subjects', [])
+
+    if not subjects:
+        return jsonify({'message': f'No subjects assigned to role "{role}" in organization "{organization_name}"'}), 200
+
+    return jsonify(subjects), 200
 
 @organization_bp.route('/roles/<string:role>/permissions', methods=['GET'])
 def list_permissions(role):
