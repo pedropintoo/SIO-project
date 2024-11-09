@@ -1,8 +1,9 @@
 # api path: /api/v1/auth/ 
 from . import auth_bp
 from flask import request, jsonify
-from ...organization_db.organization_db import OrganizationDB
+from organizations_db.organizations_db import OrganizationsDB
 
+organization_db = OrganizationsDB()
 
 @auth_bp.route('/organization', methods=['POST'])
 def create_organization():
@@ -16,10 +17,11 @@ def create_organization():
     organization_name, username, name, email, public_key_file = [data[field] for field in required_fields]
     
     # Use method in_database to check if organization already exists
-    organization_db = OrganizationDB()
     data = organization_db.get_all_organizations()
     if organization_db.in_database(data, organization_name):
         return jsonify({'error': 'Organization already exists'}), 400
+
+    
 
     return jsonify({'message': 'Organization created successfully'}), 201
 

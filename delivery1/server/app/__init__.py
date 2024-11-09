@@ -1,12 +1,8 @@
 from flask import Flask
-from server.app.auth import auth_bp
-from server.app.file import file_bp
-from server.app.session import session_bp
-from server.app.organization import organization_bp
-
-from server.metadata_db.metadata_db import MetadataDB
-from server.organization_db.organization_db import OrganizationDB
-
+from app.auth import auth_bp
+from app.file import file_bp
+from app.session import session_bp
+from app.organization import organization_bp
 
 def create_app():
     app = Flask(__name__)
