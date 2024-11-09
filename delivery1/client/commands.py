@@ -8,6 +8,17 @@ class Command:
         self.server_address = state['REP_ADDRESS']
         self.server_pub_key = state['REP_PUB_KEY']
 
+class Local(Command):
+    
+    def __init__(self, logger, state):
+        super().__init__(logger, state) 
+    
+    def rep_subject_credentials(self, password, credentials_file):
+        ...
+    
+    def rep_decrypt_file(self, enctrypted_file, encryption_metadata):
+        ...
+
 class Auth(Command):
     
     def __init__(self, logger, state):

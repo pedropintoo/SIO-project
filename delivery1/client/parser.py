@@ -1,12 +1,15 @@
 from argparse import ArgumentParser
 from inspect import signature
-from client.commands import Auth, Session, Organization, File
+from client.commands import Local, Auth, Session, Organization, File
 import sys
 
 class CommandsParser():
 
     def __init__(self, parser):
         self.parser = parser
+
+        self.parser_rep_subject_credentials()
+        self.parser_rep_decrypt_file()
 
         self.parser_rep_create_org()
         self.parser_rep_list_orgs()
@@ -44,6 +47,7 @@ class CommandsParser():
             logger.error("No command provided")
             sys.exit(-1)
         
+        local = Local(logger, state)
         auth = Auth(logger, state)
         file = File(logger, state)
         organization = Organization(logger, state)
@@ -51,6 +55,8 @@ class CommandsParser():
         
         # Command-function mapping
         command_functions = {
+            'rep_subject_credentials': local.rep_subject_credentials,
+            'rep_decrypt_file': local.rep_decrypt_file,
             'rep_create_org': auth.rep_create_org,
             'rep_list_orgs': organization.rep_list_orgs,
             'rep_create_session': auth.rep_create_session,
@@ -92,6 +98,27 @@ class CommandsParser():
             logger.error(f"Error executing command '{command}': {e}")
             sys.exit(-1)
         
+    ## Local commands
+
+    def parser_rep_subject_credentials(self):
+        """This command generates a new key pair and stores it in the specified file.
+
+        Usage:
+            rep_subject_credentials <password> <credentials_file>
+        """
+        subparser = self.parser.add_parser('rep_subject_credentials', help='This command generates a new key pair and stores it in the specified file.')
+        subparser.add_argument('password', help='Password to generate the key pair')
+        subparser.add_argument('credentials_file', help='Path to the credentials file')
+
+    def parser_rep_decrypt_file(self):
+        """This command sends to the stdout the contents of an encrypted file upon decryption (and integrity control) with the encryption metadata.
+
+        Usage:
+            rep_decrypt_file <encrypted file> <encryption metadata>
+        """
+        subparser = self.parser.add_parser('rep_decrypt_file', help='This command sends to the stdout the contents of an encrypted file upon decryption (and integrity control) with the encryption metadata.')
+        subparser.add_argument('encrypted_file', help='Path to the encrypted file')
+        subparser.add_argument('encryption_metadata', help='Path to the encryption metadata')
 
     ## Commands that use the anonymous API
     
