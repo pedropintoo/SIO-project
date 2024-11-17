@@ -1,36 +1,6 @@
 [
   {
-    "_id": "6739cd12bbd4a219413bb023",
-    "documents_metadata": {},
-    "name": "jorginhos",
-    "roles": {
-      "Managers": {
-        "permissions": [
-          "ROLE_NEW",
-          "ROLE_DOWN",
-          "ROLE_UP",
-          "ROLE_MOD",
-          "ROLE_ACL",
-          "SUBJECT_NEW",
-          "SUBJECT_DOWN",
-          "SUBJECT_UP",
-          "DOC_NEW"
-        ],
-        "state": "active",
-        "subjects": ["jj"]
-      }
-    },
-    "subjects": {
-      "jj": {
-        "email": "jj@ua.pt",
-        "name": "jj",
-        "public_key": "for-testing",
-        "state": "active"
-      }
-    }
-  },
-  {
-    "_id": "6739ce5bbbd4a219413bb024",
+    "_id": "673a1a82209e45302ca7aa28",
     "documents_metadata": {},
     "name": "jorginhos2",
     "roles": {
@@ -54,7 +24,7 @@
       "jj": {
         "email": "jj@ua.pt",
         "name": "jj",
-        "public_key": "for-testing",
+        "public_key": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFWDRjU2hsVFdFcXFxM0cxdStFOUVsTmxYMFBqVAozVjlsV0IydG9sTi9SaHV3RVFCazR0SGRka1dBVDF5TDU1V2g1VmNiY0ZidGhuMEUxTHVYVXlhMVd3PT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==",
         "state": "active"
       }
     }

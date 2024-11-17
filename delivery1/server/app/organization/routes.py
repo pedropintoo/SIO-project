@@ -1,13 +1,11 @@
 # api path: /api/v1/organizations/ 
 from . import organization_bp
-from flask import jsonify, request
+from flask import jsonify, request, current_app
 from organizations_db.organizations_db import OrganizationsDB
-
-organization_db = OrganizationsDB()
 
 @organization_bp.route('/', methods=['GET'])
 def list_orgs():
-    return jsonify(organization_db.get_all_organizations()), 200
+    return jsonify(current_app.organization_db.get_all_organizations()), 200
     
 # Roles Endpoints
 @organization_bp.route('/roles/<string:role>/subjects', methods=['GET'])
@@ -16,9 +14,9 @@ def list_subjects(role):
     session = request.args.get('session')
 
     # Get organization name from session
-    organization_name = organization_db.get_organization_name(session)
+    organization_name = current_app.organization_db.get_organization_name(session)
 
-    role_data = organization_db.retrieve_role(organization_name, role)
+    role_data = current_app.organization_db.retrieve_role(organization_name, role)
     
     if not role_data:
         return jsonify({'error': f'Role "{role}" not found in organization "{organization_name}"'}), 404
@@ -36,9 +34,9 @@ def list_permissions(role):
     session = request.args.get('session')
 
     # Get organization name from session
-    organization_name = organization_db.get_organization_name(session)
+    organization_name = current_app.organization_db.get_organization_name(session)
 
-    role_data = organization_db.retrieve_role(organization_name, role)
+    role_data = current_app.organization_db.retrieve_role(organization_name, role)
 
     if not role_data:
         return jsonify({'error': f'Role "{role}" not found in organization "{organization_name}"'}), 404
@@ -57,7 +55,7 @@ def add_role(role, subjects, permissions, state):
     session = request.args.get('session')
 
     # Get organization name from session
-    organization_name = organization_db.get_organization_name(session)
+    organization_name = current_app.organization_db.get_organization_name(session)
 
     role_details = {
         'subjects': subjects,
@@ -65,7 +63,7 @@ def add_role(role, subjects, permissions, state):
         'state': state
     }
 
-    organization_db.add_role(organization_name, role, role_details)
+    current_app.organization_db.add_role(organization_name, role, role_details)
 
     return jsonify({f'Role "{role}" added to organization "{organization_name}"'}), 200
 
@@ -75,9 +73,9 @@ def action_subject_to_role(role):
     session = request.args.get('session')   
 
     # Get organization name from session
-    organization_name = organization_db.get_organization_name(session)  
+    organization_name = current_app.organization_db.get_organization_name(session)  
 
-    role_data = organization_db.retrieve_role(organization_name, role) 
+    role_data = current_app.organization_db.retrieve_role(organization_name, role) 
     if not role_data:
         return jsonify({'error': f'Role "{role}" not found in organization "{organization_name}"'}), 404  
           
@@ -90,7 +88,7 @@ def action_subject_to_role(role):
     elif action == 'remove':
         role_data['subjects'].remove(data.get('subject'))
     
-    organization_db.update_role(organization_name, role, role_data)
+    current_app.organization_db.update_role(organization_name, role, role_data)
 
     return jsonify({f'Subject "{data.get("subject")}" {action}ed to role "{role}" in organization "{organization_name}"'}), 200
 
@@ -101,9 +99,9 @@ def action_permission_to_role(role):
     session = request.args.get('session')
 
     # Get organization name from session
-    organization_name = organization_db.get_organization_name(session)
+    organization_name = current_app.organization_db.get_organization_name(session)
 
-    role_data = organization_db.retrieve_role(organization_name, role)
+    role_data = current_app.organization_db.retrieve_role(organization_name, role)
 
     if not role_data:
         return jsonify({'error': f'Role "{role}" not found in organization "{organization_name}"'}), 404
@@ -116,7 +114,7 @@ def action_permission_to_role(role):
     elif action == 'remove':
         role_data['permissions'].remove(data.get('permission'))
 
-    organization_db.update_role(organization_name, role, role_data)
+    current_app.organization_db.update_role(organization_name, role, role_data)
 
     return jsonify({f'Permission "{data.get("permission")}" {action}ed to role "{role}" in organization "{organization_name}"'}), 200
 
@@ -127,9 +125,9 @@ def update_role_state(role):
     session = request.args.get('session')
 
     # Get organization name from session
-    organization_name = organization_db.get_organization_name(session)
+    organization_name = current_app.organization_db.get_organization_name(session)
 
-    role_data = organization_db.retrieve_role(organization_name, role)
+    role_data = current_app.organization_db.retrieve_role(organization_name, role)
 
     if not role_data:
         return jsonify({'error': f'Role "{role}" not found in organization "{organization_name}"'}), 404
@@ -142,7 +140,7 @@ def update_role_state(role):
     elif new_state == 'suspend':
         role_data['state'] = 'suspend'
 
-    organization_db.update_role(organization_name, role, role_data)
+    current_app.organization_db.update_role(organization_name, role, role_data)
 
     return jsonify({f'Role "{role}" state updated to "{role_data["state"]}" in organization "{organization_name}"'}), 200
     
@@ -153,7 +151,7 @@ def add_subject(username, name, email, public_key, state):
     session = request.args.get('session')
 
     # Get organization name from session
-    organization_name = organization_db.get_organization_name(session)
+    organization_name = current_app.organization_db.get_organization_name(session)
 
     subject_details = {
         'name': name,
@@ -162,7 +160,7 @@ def add_subject(username, name, email, public_key, state):
         'state': state
     }
 
-    organization_db.add_subject(organization_name, username, subject_details)
+    current_app.organization_db.add_subject(organization_name, username, subject_details)
 
 @organization_bp.route('/subjects/<string:username>/roles', methods=['GET'])
 def list_roles_subject(username):
@@ -170,9 +168,9 @@ def list_roles_subject(username):
     session = request.args.get('session')
 
     # Get organization name from session
-    organization_name = organization_db.get_organization_name(session)
+    organization_name = current_app.organization_db.get_organization_name(session)
 
-    roles = organization_db.retrieve_roles(organization_name)
+    roles = current_app.organization_db.retrieve_roles(organization_name)
 
     subject_roles = []
     for role, role_data in roles.items():
@@ -187,9 +185,9 @@ def update_subject_state(username):
     session = request.args.get('session')
 
     # Get organization name from session
-    organization_name = organization_db.get_organization_name(session)
+    organization_name = current_app.organization_db.get_organization_name(session)
 
-    subject_data = organization_db.retrieve_subject(organization_name, username)
+    subject_data = current_app.organization_db.retrieve_subject(organization_name, username)
 
     if not subject_data:
         return jsonify({'error': f'Subject "{username}" not found in organization "{organization_name}"'}), 404
@@ -202,7 +200,7 @@ def update_subject_state(username):
     elif new_state == 'suspend':
         subject_data["state"] = 'suspend'
     
-    organization_db.update_subject(organization_name, username, subject_data)
+    current_app.organization_db.update_subject(organization_name, username, subject_data)
 
 @organization_bp.route('/subjects/<string:username>/state', methods=['GET'])
 def list_subject_state(username):
@@ -210,9 +208,9 @@ def list_subject_state(username):
     session = request.args.get('session')
 
     # Get organization name from session
-    organization_name = organization_db.get_organization_name(session)
+    organization_name = current_app.organization_db.get_organization_name(session)
 
-    subject_data = organization_db.retrieve_subject(organization_name, username)
+    subject_data = current_app.organization_db.retrieve_subject(organization_name, username)
 
     if not subject_data:
         return jsonify({'error': f'Subject "{username}" not found in organization "{organization_name}"'}), 404
@@ -223,12 +221,14 @@ def list_subject_state(username):
 @organization_bp.route('/subjects/state', methods=['GET'])
 def list_all_subjects_state():
     # TODO: Logic to show the state of all subjects
-    session = request.args.get('session')
+    associated_data = request.args.get('associated_data')
+    encrypted_data = request.args.get('encrypted_data')
+    
+    if not associated_data or not encrypted_data:
+        return jsonify({'error': 'Missing required fields'}), 400
+    
 
-    # Get organization name from session
-    organization_name = organization_db.get_organization_name(session)
-
-    subjects = organization_db.retrieve_subjects(organization_name)
+    subjects = current_app.organization_db.retrieve_subjects(organization_name)
 
     subjects_state = {}
     for username, subject_data in subjects.items():
@@ -243,14 +243,22 @@ def list_roles_permission(permission):
     session = request.args.get('session')
 
     # Get organization name from session
-    organization_name = organization_db.get_organization_name(session)
+    organization_name = current_app.organization_db.get_organization_name(session)
 
-    roles = organization_db.retrieve_roles(organization_name)
+    roles = current_app.organization_db.retrieve_roles(organization_name)
+    documents_metadata = current_app.organization_db.get_metadata(organization_name)
 
     permission_roles = []
+    
     for role, role_data in roles.items():
         if permission in role_data.get('permissions', []):
             permission_roles.append(role)
+
+    
+    for document_name, document_metadata in documents_metadata.items():
+        for role, acl in document_metadata.get('document_acl', {}).items():
+            if permission in acl:
+                permission_roles.append(role)
 
     return jsonify(permission_roles), 200
     
@@ -258,10 +266,17 @@ def list_roles_permission(permission):
 # Documents Endpoints
 @organization_bp.route("/documents", methods=['GET'])
 def list_documents():
+    session = request.args.get('session')
     creator = request.args.get('creator')
-    date_str = request.args.get('date')    
     date_filter = request.args.get('date_filter')
-    # TODO: Logic to list documents
+    date_str = request.args.get('date')    
+
+    # Get organization name from session
+    organization_name = current_app.organization_db.get_organization_name(session)
+
+    documents = current_app.organization_db.list_documents(organization_name, creator, date_filter, date_str)
+
+    return jsonify(documents), 200
 
 @organization_bp.route("/documents", methods=['POST'])
 def create_document():
@@ -281,11 +296,30 @@ def get_document_file(document_name):
 @organization_bp.route("/documents/<string:document_name>", methods=['DELETE'])
 def delete_document(document_name):
     # TODO: Logic to delete a document
-    ...
+    session = request.args.get('session')
+
+    # Get organization name from session
+    organization_name = current_app.organization_db.get_organization_name(session)
+
+    subject = request.args.get('subject')
+
+    current_app.organization_db.delete_metadata(organization_name, document_name, subject)
+
+    return jsonify({f'Document "{document_name}" deleted from organization "{organization_name}"'}), 200
+
 
 @organization_bp.route("/documents/<string:document_name>/acl", methods=['PUT'])
 def update_document_acl(document_name):
     # TODO: Logic to update document ACL
+    session = request.args.get('session')
+
+    # Get organization name from session
+    organization_name = current_app.organization_db.get_organization_name(session)
+
     data = request.get_json()
-    new_acl = data.get('acl')
-    ...
+    new_acl = data.get('acl') # new_acl example: "tios_de_aveiro": ["DOC_ACL", "DOC_READ"]
+
+    current_app.organization_db.update_acl(organization_name, document_name, new_acl)
+    
+    return jsonify({f'Document "{document_name}" ACL updated in organization "{organization_name}"'}), 200
+

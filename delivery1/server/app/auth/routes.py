@@ -1,13 +1,13 @@
 # api path: /api/v1/auth/ 
 from . import auth_bp
-from flask import request, jsonify
+from flask import request, jsonify, current_app
 from organizations_db.organizations_db import OrganizationsDB
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
-
-organization_db = OrganizationsDB()
-EC_CURVE = ec.SECP256R1()
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives import hashes
+import base64
 
 @auth_bp.route('/organization', methods=['POST'])
 def create_organization():
@@ -20,7 +20,7 @@ def create_organization():
     organization_name, username, name, email, public_key = [data[field] for field in required_fields]
     
     # Use method in_database to check if organization already exists
-    if organization_db.in_database(organization_name):
+    if current_app.organization_db.in_database(organization_name):
         return jsonify({'error': 'Organization already exists'}), 400
     
     organization = {
@@ -47,43 +47,92 @@ def create_organization():
         "documents_metadata": {} 
     }
     
-    organization_db.insert_organization(organization)
+    current_app.organization_db.insert_organization(organization)
     
     return jsonify({'message': "Organization created successfully"}), 200
 
 @auth_bp.route('/session', methods=['POST'])
 def create_session():
-    # TODO: Logic to create a session
     data = request.get_json()
 
     required_fields = ['organization', 'username', 'password', 'session_public_key']
-
     if not all(field in data for field in required_fields):
         return jsonify({'error': 'Missing required fields'}), 400
     
     organization_name, username, password, session_public_key = [data[field] for field in required_fields]
 
     # Check if organization exists
-    if not organization_db.in_database(organization_name):
+    if not current_app.organization_db.in_database(organization_name):
         return jsonify({'error': 'Organization does not exist'}), 400
     
-    # Verify the authenticity of the user
-    organization = organization_db.get_organization(organization_name)
-    
-    if not organization:
-        return jsonify({'error': 'Organization does not exist'}), 400
-    
+    # Get organization data
+    organization = current_app.organization_db.get_organization(organization_name)
     if username not in organization['subjects']:
-        return jsonify({'error': f"Invalid username" }), 400
+        return jsonify({'error': 'Invalid username'}), 400    
     
-    password_int = int.from_bytes(password.encode(), 'big')
-    private_key = ec.derive_private_key(password_int, EC_CURVE, default_backend())
-    public_key_to_compare = private_key.public_key().public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo).decode("utf-8")
+    try:
+        # Derive client public key from password
+        client_password_int = int.from_bytes(password.encode(), 'big')
+        client_private_key = ec.derive_private_key(client_password_int, current_app.EC_CURVE, default_backend())
+        derived_public_key_bytes = client_private_key.public_key().public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        
+        # Get stored public key
+        stored_public_key_pem = base64.b64decode(organization['subjects'][username]['public_key'])
+        stored_public_key = serialization.load_pem_public_key(stored_public_key_pem)
+        stored_public_key_bytes = stored_public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        
+        # Compare keys
+        if derived_public_key_bytes != stored_public_key_bytes:
+            return jsonify({'error': 'Invalid password or mismatched public key'}), 400
 
-    if organization['subjects'][username]['public_key'] != public_key_to_compare:
-        return jsonify({'error': f"Invalid password: {organization['subjects'][username]['public_key']} {public_key_to_compare}"}), 400
+        
+        # Handshake for a new session
+        # - Generate server private/public key pair
+        server_private_key = ec.generate_private_key(current_app.EC_CURVE, default_backend())
+        server_public_key_bytes = server_private_key.public_key().public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        
+        # - Decode client's session public key
+        session_public_key_pem = base64.b64decode(session_public_key)
+        session_public_key = serialization.load_pem_public_key(session_public_key_pem)
+
+        # - Perform ECDH key exchange
+        shared_key = server_private_key.exchange(ec.ECDH(), session_public_key)
+
+        # - Derive a shared session key
+        derived_key = HKDF(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=None,
+            info=b'handshake data',
+            backend=default_backend()
+        ).derive(shared_key)
+        
+        # Store session details (temporary storage)
+        sessions = current_app.sessions
+        session_id = len(sessions) + 1
+        sessions[session_id] = {
+            'organization': organization_name,
+            'username': username,
+            'derived_key': derived_key
+        }
+        
+        # Respond with session info
+        return jsonify({
+            'session_id': session_id,
+            'public_key': server_public_key_bytes.decode()
+        }), 200
     
-    return jsonify({'message': "Session created successfully"}), 200
+    except Exception as e:
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 
 @auth_bp.route('/session/<int:session_id>', methods=['POST'])
 def refresh_session_keys(session_id):

@@ -58,7 +58,7 @@
             "file_handle": "1978de1a-2b5b-49fa-8c51-43e212f70296",
             "document_acl": {
                 "tios_de_aveiro": ["DOC_ACL", "DOC_READ"],
-                "losers": ["DOC_DELETE"]
+                "losers": ["DOC_DELETE"]   
             },
             "deleter": null,
             "alg": "AES 256",
