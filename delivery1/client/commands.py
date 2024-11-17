@@ -5,6 +5,8 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 import hashlib
 
+EC_CURVE = ec.SECP256R1()
+
 class Command:
     def __init__(self, logger, state):
         self.logger = logger
@@ -18,18 +20,9 @@ class Local(Command):
         super().__init__(logger, state) 
     
     def rep_subject_credentials(self, password, credentials_file):
-        # Hash the password 
-        password_hash = hashlib.sha256(password.encode()).digest()
+        password_int = int.from_bytes(password.encode(), 'big')
 
-        password_hash_to_int = int.from_bytes(password_hash, 'big')
-
-        # Ensure the private key is within the valid range for the curve 
-        curve = ec.SECP256R1()
-        max_private_key = curve.key_size - 1 
-        if password_hash_to_int > max_private_key:
-            password_hash_to_int = password_hash_to_int % max_private_key
-
-        private_key = ec.derive_private_key(password_hash_to_int, curve, default_backend())
+        private_key = ec.derive_private_key(password_int, EC_CURVE, default_backend())
         self.logger.debug(f'Private key created successfully') 
 
         # Generate the corresponding public key
@@ -45,7 +38,7 @@ class Local(Command):
             f.write(public_key_bytes)
         self.logger.debug(f'Public key stored in credentials file: {credentials_file}')
     
-    def rep_decrypt_file(self, enctrypted_file, encryption_metadata):
+    def rep_decrypt_file(self, encrypted_file, encryption_metadata):
         ...
 
 class Auth(Command):
