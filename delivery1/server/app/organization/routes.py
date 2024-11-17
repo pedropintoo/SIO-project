@@ -32,7 +32,7 @@ def list_subjects(role):
 
 @organization_bp.route('/roles/<string:role>/permissions', methods=['GET'])
 def list_permissions(role):
-    # TODO: Logic to get permissions in one of my organization's roles
+    # TODO: Logic to get permissions in one of my organization's roles 
     ...
 
 
