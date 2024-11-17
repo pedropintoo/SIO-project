@@ -1,0 +1,62 @@
+[
+  {
+    "_id": "6739cd12bbd4a219413bb023",
+    "documents_metadata": {},
+    "name": "jorginhos",
+    "roles": {
+      "Managers": {
+        "permissions": [
+          "ROLE_NEW",
+          "ROLE_DOWN",
+          "ROLE_UP",
+          "ROLE_MOD",
+          "ROLE_ACL",
+          "SUBJECT_NEW",
+          "SUBJECT_DOWN",
+          "SUBJECT_UP",
+          "DOC_NEW"
+        ],
+        "state": "active",
+        "subjects": ["jj"]
+      }
+    },
+    "subjects": {
+      "jj": {
+        "email": "jj@ua.pt",
+        "name": "jj",
+        "public_key": "for-testing",
+        "state": "active"
+      }
+    }
+  },
+  {
+    "_id": "6739ce5bbbd4a219413bb024",
+    "documents_metadata": {},
+    "name": "jorginhos2",
+    "roles": {
+      "Managers": {
+        "permissions": [
+          "ROLE_NEW",
+          "ROLE_DOWN",
+          "ROLE_UP",
+          "ROLE_MOD",
+          "ROLE_ACL",
+          "SUBJECT_NEW",
+          "SUBJECT_DOWN",
+          "SUBJECT_UP",
+          "DOC_NEW"
+        ],
+        "state": "active",
+        "subjects": ["jj"]
+      }
+    },
+    "subjects": {
+      "jj": {
+        "email": "jj@ua.pt",
+        "name": "jj",
+        "public_key": "for-testing",
+        "state": "active"
+      }
+    }
+  }
+]

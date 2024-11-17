@@ -118,7 +118,7 @@ class CommandsParser():
         """
         subparser = self.parser.add_parser('rep_decrypt_file', help='This command sends to the stdout the contents of an encrypted file upon decryption (and integrity control) with the encryption metadata.')
         subparser.add_argument('encrypted_file', help='Path to the encrypted file')
-        subparser.add_argument('encryption_metadata', help='Path to the encryption metadata')
+        subparser.add_argument('encryption_metadata', help='Path to algorithm and key metadata')
 
     ## Commands that use the anonymous API
     

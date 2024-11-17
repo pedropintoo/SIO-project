@@ -4,6 +4,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 import hashlib
+import json
 
 EC_CURVE = ec.SECP256R1()
 
@@ -20,6 +21,7 @@ class Local(Command):
         super().__init__(logger, state) 
     
     def rep_subject_credentials(self, password, credentials_file):
+        
         password_int = int.from_bytes(password.encode(), 'big')
 
         private_key = ec.derive_private_key(password_int, EC_CURVE, default_backend())
@@ -39,7 +41,11 @@ class Local(Command):
         self.logger.debug(f'Public key stored in credentials file: {credentials_file}')
     
     def rep_decrypt_file(self, encrypted_file, encryption_metadata):
-        ...
+        self.logger.debug(f"Encryption metadata: {encryption_metadata}")
+        algorithm = self.state[encryption_metadata]['algorithm']
+        key = self.state[encryption_metadata]['key']
+        # TODO: ...
+        
 
 class Auth(Command):
     
@@ -50,12 +56,30 @@ class Auth(Command):
     def rep_create_org(self, organization, username, name, email, public_key_file):
         """This command creates an organization in a Repository and defines its first subject."""
         # POST /api/v1/auth/organization
-        return requests.post(f'{self.server_address}/api/v1/auth/organization', json={'organization': organization, 'username': username, 'name': name, 'email': email, 'public_key_file': public_key_file})
+        pem_data = None
+        with open(public_key_file, 'rb') as f:
+            pem_data = f.read()
+        
+        if pem_data is None:
+            self.logger.error(f'Failed to read public key file: {public_key_file}')
+            return -1
+        
+        public_key = serialization.load_pem_public_key(pem_data, None).public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo).decode('utf-8')
+        
+        self.logger.debug(f'Starting organization creation with public key: {public_key}')
+        requests.post(f'{self.server_address}/api/v1/auth/organization', json={'organization': organization, 'username': username, 'name': name, 'email': email, 'public_key': public_key})
+        self.logger.info(f'Organization {organization} created successfully')
 
     def rep_create_session(self, organization, username, password, credentials_file, session_file):
         """This command creates a session for a username belonging to an organization, and stores the session context in a file."""
         # POST /api/v1/auth/session
-        return requests.post(f'{self.server_address}/api/v1/auth/session', json={'organization': organization, 'username': username, 'password': password, 'credentials_file': credentials_file, 'session_file': session_file})
+        session_public_key = None
+        with open(credentials_file, 'r') as f:
+            session_public_key = f.read()
+        
+        response = requests.post(f'{self.server_address}/api/v1/auth/session', json={'organization': organization, 'username': username, 'password': password, 'session_public_key': session_public_key})
+
+        self.logger.debug(response.json())
 
 class File(Command):
     
@@ -99,7 +123,12 @@ class Organization(Command):
     def rep_list_orgs(self):
         """This command lists all organizations defined in a Repository."""
         # GET /api/v1/organizations
-        return requests.get(f'{self.server_address}/api/v1/organizations')
+        response = requests.get(f'{self.server_address}/api/v1/organizations/')
+        if response.status_code == 200:
+            organizations = response.json()
+            print(organizations)
+        else:
+            self.logger.error(f'Failed to list organizations: {response.status_code}')
 
     def rep_list_subjects(self, session_file, username=None):
         """This command lists the subjects of the organization with which I have currently a session. The listing should show the status of all the subjects (active or suspended). This command accepts an extra command to show only one subject."""

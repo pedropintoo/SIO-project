@@ -3,19 +3,19 @@
     "name": "organization1",
     "subjects": {
         "user1": {
-            "full_name": "User full name",
+            "name": "User full name",
             "email": "user email",
             "public_key": "CADkhdp21y4pg",
             "state": "active"
         },
         "user2": {
-            "full_name": "Another User",
+            "name": "Another User",
             "email": "anotheruser@example.com",
             "public_key": "XYAjde021dy3nz",
             "state": "active"
         },
         "user43": {
-            "full_name": "Another of other user",
+            "name": "Another of other user",
             "email": "anotherofotheruser@example.com",
             "public_key": "ASDASD123132131",
             "state": "suspend"

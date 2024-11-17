@@ -31,7 +31,7 @@ def parse_env(logger, state):
 
     if 'REP_PUB_KEY' in os.environ:
         rep_pub_key = os.getenv('REP_PUB_KEY')
-        logger.debug('Loading REP_PUB_KEY from: ' + rep_pub_key)
+        logger.debug('Loading REP_PUB_KEY from: ' + state['REP_PUB_KEY'])
         if os.path.exists(rep_pub_key):
             with open(rep_pub_key, 'r') as f:
                 state['REP_PUB_KEY'] = f.read()
@@ -67,6 +67,9 @@ def parse_args(logger, state):
     if args.repo:
         state['REP_ADDRESS'] = args.repo[0]
         logger.info('Overriding REP_ADDRESS from command line')
+
+    if args.command:
+        logger.info("Command: " + args.command)
 
     return args, state
 

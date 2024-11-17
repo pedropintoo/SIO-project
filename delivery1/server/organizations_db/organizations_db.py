@@ -5,14 +5,16 @@ class OrganizationsDB:
     def __init__(self):
          # Get the MongoDB URI from environment variables
         mongo_uri = os.getenv('MONGO_URI')
-        print("<<<<", mongo_uri)
         # Connect to the MongoDB server
         self.client = MongoClient(mongo_uri)
-        print(">>>>", self.client)
         # Access the 'organizations' database
         self.db = self.client.organizations
         # Access the 'organizations' collection
         self.collection = self.db.data
+
+        # drop the collection
+        self.collection.drop()
+ 
  
     def get_organization_name(self, session_id):
         # TODO: Logic to get organization name from session
@@ -30,6 +32,27 @@ class OrganizationsDB:
         result = self.collection.update_one(
             {"name": organization_name},
             {"$unset": {f"subjects.{subject_name}": ""}}
+        )
+        return result.modified_count
+
+    def retrieve_subject(self, organization_name, subject_name):
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"subjects": {subject_name: 1}}
+        )
+        return result
+    
+    def retrieve_subjects(self, organization_name):
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"subjects": 1}
+        )
+        return result
+
+    def update_subject(self, organization_name, subject_name, subject_data):
+        result = self.collection.update_one(
+            {"name": organization_name},
+            {"$set": {f"subjects.{subject_name}": subject_data}}
         )
         return result.modified_count
 
@@ -54,6 +77,20 @@ class OrganizationsDB:
             {"roles": {role_name: 1}}
         )
         return result
+    
+    def retrieve_roles(self, organization_name):
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"roles": 1}
+        )
+        return result
+
+    def update_role(self, organization_name, role_name, role_data):
+        result = self.collection.update_one(
+            {"name": organization_name},
+            {"$set": {f"roles.{role_name}": role_data}}
+        )
+        return result.modified_count
 
     ### Organization Management ###
     def in_database(self, organization_name):
