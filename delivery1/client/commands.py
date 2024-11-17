@@ -79,20 +79,24 @@ class Session(Command):
     def __init__(self, logger, state):
         super().__init__(logger, state)
 
+    # ---- Next iteration ---- 
     def rep_assume_role(self, session_file, role):
         """This command requests the given role for the session"""
         # POST /api/v1/sessions/roles
         return requests.post(f'{self.server_address}/api/v1/sessions/roles', json={'session_file': session_file, 'role': role})
+
+    # ---- Next iteration ---- 
+    def rep_drop_role(self, session_file, role):
+        """This command releases the given role for the session"""
+        # DELETE /api/v1/sessions/roles
+        return requests.delete(f'{self.server_address}/api/v1/sessions/roles', json={'session_file': session_file, 'role': role})
     
+    # ---- Next iteration ---- 
     def rep_list_roles(self, session_file):
         """Lists the current session roles."""
         # GET /api/v1/sessions/roles
         return requests.get(f'{self.server_address}/api/v1/sessions/roles', json={'session_file': session_file})
     
-    def rep_drop_role(self, session_file, role):
-        """This command releases the given role for the session"""
-        # DELETE /api/v1/sessions/roles
-        return requests.delete(f'{self.server_address}/api/v1/sessions/roles', json={'session_file': session_file, 'role': role})
     
 class Organization(Command):
     
@@ -113,6 +117,7 @@ class Organization(Command):
         else:
             return requests.get(f'{self.server_address}/api/v1/organizations/subjects/status', json={'session_file': session_file})
 
+    # ---- Next iteration ----
     def rep_list_role_subjects(self, session_file, role):
         """This command lists the subjects of a role of the organization with which I have currently a session"""
         # GET /api/v1/organizations/roles/<string:role>/subjects
@@ -120,16 +125,19 @@ class Organization(Command):
             session = f.read()
         return requests.get(f'{self.server_address}/api/v1/organizations/roles/{role}/subjects', json={'session': session})
     
+    # ---- Next iteration ----
     def rep_list_subject_roles(self, session_file, username):
         """This command lists the roles of a subject of the organization with which I have currently a session."""
         # GET /api/v1/organizations/subjects/<string:username>/roles
         return requests.get(f'{self.server_address}/api/v1/organizations/subjects/{username}/roles', json={'session_file': session_file})
     
+    # ---- Next iteration ----
     def rep_list_role_permissions(self, session_file, role):
         """This command lists the permissions of a role of the organization with which I have currently a session."""
         # GET /api/v1/organizations/roles/<string:role>/permissions
         return requests.get(f'{self.server_address}/api/v1/organizations/roles/{role}/permissions', json={'session_file': session_file})
 
+    # ---- Next iteration ----
     def rep_list_permission_roles(self, session_file, permission):
         """This command lists the roles of the organization with which I have currently a session that have a given permission. Use the names previously referred for the permission rights."""
         # GET /api/v1/organizations/permissions/<string:permission>/roles
@@ -155,21 +163,25 @@ class Organization(Command):
         # PUT /api/v1/organizations/subjects/<string:username>/status
         return requests.put(f'{self.server_address}/api/v1/organizations/subjects/{username}/status', json={'session_file': session_file})
 
+    # ---- Next iteration ----
     def rep_add_role(self, session_file, role):
         """This command adds a role to the organization with which I have currently a session. This commands requires a ROLE_NEW permission."""
         # POST /api/v1/organizations/roles
         return requests.post(f'{self.server_address}/api/v1/organizations/roles', json={'session_file': session_file, 'role': role})
 
+    # ---- Next iteration ----
     def rep_suspend_role(self, session_file, role):
         """These commands change the status of a role in the organization with which I have currently a session. These commands require a ROLE_DOWN and ROLE_UP permission, respectively."""
         # PUT /api/v1/organizations/roles/<string:role>/status
         return requests.put(f'{self.server_address}/api/v1/organizations/roles/{role}/status', json={'session_file': session_file})
 
+    # ---- Next iteration ----
     def rep_reactivate_role(self, session_file, role):
         """These commands change the status of a role in the organization with which I have currently a session. These commands require a ROLE_DOWN and ROLE_UP permission, respectively."""
         # PUT /api/v1/organizations/roles/<string:role>/status
         return requests.put(f'{self.server_address}/api/v1/organizations/roles/{role}/status', json={'session_file': session_file})
 
+    # ---- Next iteration ----
     def rep_add_permission(self, session_file, role, permissionOrUsername):
         """These commands change the properties of a role in the organization with which I have currently a session, by adding a subject, removing a subject, adding a permission or removing a permission, respectively. Use the names previously referred for the permission rights. These commands require a ROLE_MOD permission."""
         # POST /api/v1/organizations/roles/<string:role>/permissions
@@ -179,6 +191,7 @@ class Organization(Command):
         else:
             return requests.post(f'{self.server_address}/api/v1/organizations/roles/{role}/subjects', json={'session_file': session_file, 'username': permissionOrUsername})
 
+    # ---- Next iteration ----
     def rep_remove_permission(self, session_file, role, permissionOrUsername):
         """These commands change the properties of a role in the organization with which I have currently a session, by adding a subject, removing a subject, adding a permission or removing a permission, respectively. Use the names previously referred for the permission rights. These commands require a ROLE_MOD permission."""
         # POST /api/v1/organizations/roles/<string:role>/permissions
@@ -208,6 +221,7 @@ class Organization(Command):
         # DELETE /api/v1/organizations/documents/<string:document_name>
         return requests.delete(f'{self.server_address}/api/v1/organizations/documents/{document_name}', json={'session_file': session_file})
 
+    # ---- Next iteration ----
     def rep_acl_doc(self, session_file, document_name, operation, role, permission):
         """This command changes the ACL of a document by adding (+) or removing (-) a permission for a given role. Use the names previously referred for the permission rights. This commands requires a DOC_ACL permission."""
         # GET /api/v1/organizations/documents/<string:document_name>/acl
