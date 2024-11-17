@@ -12,7 +12,7 @@ class Auth(Command):
     
     def __init__(self, logger, state):
         super().__init__(logger, state)
-        
+    
     
     def rep_create_org(self, organization, username, name, email, public_key_file):
         """This command creates an organization in a Repository and defines its first subject."""
