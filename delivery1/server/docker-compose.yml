@@ -17,3 +17,6 @@ services:
       - mongo
     ports:
       - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - MONGO_URI=mongodb://root:example@mongo:27017/organizations?authSource=admin
