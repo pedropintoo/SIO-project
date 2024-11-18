@@ -38,9 +38,11 @@ class OrganizationsDB:
 
     def retrieve_subject(self, organization_name, subject_name):
         result = self.collection.find_one(
-            {"name": organization_name},
-            {"subjects": {subject_name: 1}}
+            {"name": organization_name, f"subjects.{subject_name}": {"$exists": True}},
+            {f"subjects.{subject_name}": 1}
         )
+        
+        result = result.get('subjects', {}).get(subject_name)
         return result
     
     def retrieve_subjects(self, organization_name):

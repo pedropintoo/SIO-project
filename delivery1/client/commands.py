@@ -5,11 +5,13 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
+from cryptography.exceptions import InvalidSignature
 import hashlib
 import json
 import base64
 
 from server.utils import symmetric
+from server.utils.default_command import default_command 
 
 EC_CURVE = ec.SECP256R1()
 
@@ -80,41 +82,70 @@ class Auth(Command):
     def rep_create_session(self, organization, username, password, credentials_file, session_file):
         """This command creates a session for a username belonging to an organization, and stores the session context in a file."""
         # POST /api/v1/auth/session
-        session_public_key = None
-        with open(credentials_file, 'rb') as f:
-            session_public_key = f.read()
         
-        if session_public_key is None:
-            self.logger.error(f'Failed to read session public key file: {credentials_file}')
-            return -1
+        # Client private key from password
+        password_int = int.from_bytes(password.encode(), 'big')
+        client_private_key = ec.derive_private_key(password_int, EC_CURVE, default_backend())
         
-        session_public_key_base64 = base64.b64encode(session_public_key).decode('utf-8')
+        # Ephemeral key pair
+        client_ephemeral_private_key = ec.generate_private_key(EC_CURVE, default_backend())
+        client_ephemeral_public_key = client_ephemeral_private_key.public_key().public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        client_ephemeral_public_key_base64 = base64.b64encode(client_ephemeral_public_key).decode('utf-8')
         
-        response = requests.post(f'{self.server_address}/api/v1/auth/session', json={'organization': organization, 'username': username, 'password': password, 'session_public_key': session_public_key_base64})
+        associated_data = {'organization': organization, 'username': username, 'client_ephemeral_public_key': client_ephemeral_public_key_base64}
+        
+        # Sign associated data
+        signature = client_private_key.sign(json.dumps(associated_data).encode(), ec.ECDSA(hashes.SHA256()))
+        signature_base64 = base64.b64encode(signature).decode('utf-8')
+        
+        response = requests.post(f'{self.server_address}/api/v1/auth/session', json={'associated_data': associated_data, 'signature': signature_base64})
 
         if response.status_code == 200:
-            # Client private key from password
-            password_int = int.from_bytes(password.encode(), 'big')
-            client_private_key = ec.derive_private_key(password_int, EC_CURVE, default_backend())
             
-            # Shared key
-            shared_key = client_private_key.exchange(ec.ECDH(), self.server_pub_key)
-            derived_key = HKDF(
-                algorithm=hashes.SHA256(),
-                length=32,
-                salt=None,
-                info=b'handshake data',
-            ).derive(shared_key)
+            # Get associated data
+            associated_data_base64 = response.json()['associated_data']
+            associated_data = json.loads(base64.b64decode(associated_data_base64).decode('utf-8'))
+            signature = response.json()['signature']
             
-            derived_key_base64 = base64.b64encode(derived_key).decode('utf-8')
-            
-            # Store session details
-            with open(session_file, 'w') as f:
-                f.write(json.dumps({'organization': organization, 'username': username, 'derived_key': derived_key_base64, 'msg_id': 0}, indent=4))
+            try:
+                # Verify signature
+                self.server_pub_key.verify(
+                    base64.b64decode(signature.encode()),
+                    json.dumps(associated_data).encode(),
+                    ec.ECDSA(hashes.SHA256())
+                )
+
+                # Get server ephemeral public key
+                server_ephemeral_public_key_base64 = associated_data['server_ephemeral_public_key']
+                server_ephemeral_public_key = serialization.load_pem_public_key(base64.b64decode(server_ephemeral_public_key_base64), default_backend())
                 
-            self.logger.info(f'Session created successfully and stored in file: {session_file}')
+                # Calculate shared key
+                shared_key = client_private_key.exchange(ec.ECDH(), server_ephemeral_public_key)
+                
+                derived_key = HKDF(
+                    algorithm=hashes.SHA256(),
+                    length=32,
+                    salt=None,
+                    info=b'handshake data',
+                ).derive(shared_key)
+                derived_key_base64 = base64.b64encode(derived_key).decode('utf-8')
+                
+                # Store session details
+                session_id = associated_data['session_id']
+                
+                with open(session_file, 'w') as f:
+                    f.write(json.dumps({'session_id': session_id, 'organization': organization, 'username': username, 'derived_key': derived_key_base64, 'msg_id': 0}, indent=4))
+                    
+                self.logger.info(f'Session created successfully and stored in file: {session_file}')
+            except InvalidSignature:
+                self.logger.error(f'Failed to verify signature')
+                return
         else:
             self.logger.error(f'Failed to create session: {response.status_code}')
+            self.logger.error(f'Response: {response.text}')
             return -1
 
 class File(Command):
@@ -183,38 +214,8 @@ class Organization(Command):
         """This command lists the subjects of the organization with which I have currently a session. The listing should show the state of all the subjects (active or suspended). This command accepts an extra command to show only one subject."""
         # GET /api/v1/organizations/subjects/<string:username>/state
         # GET /api/v1/organizations/subjects/state
-   
-        derived_key = None
-        organization = None
-        client_username = None
-        msg_id = 0
-        with open(session_file, 'r') as f:
-            session = json.load(f)
-            derived_key = session['derived_key']
-            organization = session['organization']
-            client_username = session['username']
-            msg_id = session['msg_id'] + 1
-        
-        # Update session file
-        with open(session_file, 'w') as f:
-            session['msg_id'] = msg_id
-            f.write(json.dumps(session, indent=4)) 
-        
-        associated_data = {'msg_id': msg_id, 'from': client_username}
-        associated_data_bytes = json.dumps(associated_data).encode()
-        
-        plaintext = {'organization': organization, 'username': username}
-        plaintext_bytes = json.dumps(plaintext).encode()
-                
-        # Encrypt data
-        nonce, ciphertext = symmetric.encrypt(derived_key, plaintext_bytes, associated_data_bytes)
-        
-        encrypted_data = {
-            'nonce': base64.b64encode(nonce).decode(),
-            'ciphertext': base64.b64encode(ciphertext).decode()
-        }
-
-        return requests.get(f'{self.server_address}/api/v1/organizations/subjects/state', json={'associated_data': associated_data, 'encrypted_data': encrypted_data})
+        plaintext = {'username': username}
+        return default_command(self.logger, self.server_address, '/api/v1/organizations/subjects/state', plaintext, session_file)
 
     # ---- Next iteration ----
     def rep_list_role_subjects(self, session_file, role):
@@ -245,12 +246,15 @@ class Organization(Command):
     def rep_list_docs(self, session_file, creator=None, date_filter=None, date=None):
         """This command lists the documents of the organization with which I have currently a session, possibly filtered by a subject that created them and by a date (newer than, older than, equal to), expressed in the DD-MM-YYYY format."""
         # GET /api/v1/organizations/documents
-        return requests.get(f'{self.server_address}/api/v1/organizations/documents', json={'session': session, 'creator': creator, 'date_filter': date_filter, 'date': date})
+        plaintext = {'creator': creator, 'date_filter': date_filter, 'date': date}
+        return default_command(self.logger, self.server_address, '/api/v1/organizations/documents', plaintext, session_file)
 
     def rep_add_subject(self, session_file, username, name, email, credentials_file):
         """This command adds a new subject to the organization with which I have currently a session. By default the subject is created in the active state. This commands requires a SUBJECT_NEW permission."""
         # POST /api/v1/organizations/subjects
-        return requests.post(f'{self.server_address}/api/v1/organizations/subjects', json={'session': session, 'username': username, 'name': name, 'email': email, 'credentials_file': credentials_file})
+        # return requests.post(f'{self.server_address}/api/v1/organizations/subjects', json={'session': session, 'username': username, 'name': name, 'email': email, 'credentials_file': credentials_file})
+        plaintext = {'username': username, 'name': name, 'email': email, 'credentials_file': credentials_file}
+        return default_command(self.logger, self.server_address, '/api/v1/organizations/subjects', plaintext, session_file)
 
     def rep_suspend_subject(self, session_file, username):
         """These commands change the state of a subject in the organization with which I have currently a session. These commands require a SUBJECT_DOWN and SUBJECT_UP permission, respectively."""

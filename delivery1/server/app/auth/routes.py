@@ -7,7 +7,9 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
+from cryptography.exceptions import InvalidSignature
 import base64
+import json
 
 @auth_bp.route('/organization', methods=['POST'])
 def create_organization():
@@ -54,85 +56,82 @@ def create_organization():
 @auth_bp.route('/session', methods=['POST'])
 def create_session():
     data = request.get_json()
-
-    required_fields = ['organization', 'username', 'password', 'session_public_key']
-    if not all(field in data for field in required_fields):
-        return jsonify({'error': 'Missing required fields'}), 400
     
-    organization_name, username, password, session_public_key = [data[field] for field in required_fields]
-
-    # Check if organization exists
-    if not current_app.organization_db.in_database(organization_name):
-        return jsonify({'error': 'Organization does not exist'}), 400
+    # Get body data
+    associated_data = data.get('associated_data')
+    signature = data.get('signature')
+    organization = associated_data.get('organization')
+    username = associated_data.get('username')
+    client_ephemeral_public_key = serialization.load_pem_public_key(base64.b64decode(associated_data.get('client_ephemeral_public_key')))
     
-    # Get organization data
-    organization = current_app.organization_db.get_organization(organization_name)
-    if username not in organization['subjects']:
-        return jsonify({'error': 'Invalid username'}), 400    
+    # Get client public key
+    result = current_app.organization_db.retrieve_subject(organization, username)
+    if result is None:
+        return jsonify({'error': 'Invalid organization or username'}), 400
+
+    client_public_key_pem = base64.b64decode(result.get('public_key'))
+    client_public_key = serialization.load_pem_public_key(client_public_key_pem)
     
     try:
-        # Derive client public key from password
-        client_password_int = int.from_bytes(password.encode(), 'big')
-        client_private_key = ec.derive_private_key(client_password_int, current_app.EC_CURVE, default_backend())
-        derived_public_key_bytes = client_private_key.public_key().public_bytes(
+        # Verify signature
+        client_public_key.verify(
+            base64.b64decode(signature),
+            json.dumps(associated_data).encode(),
+            ec.ECDSA(hashes.SHA256())
+        )
+        
+        # Generate server ephemeral key pair
+        server_ephemeral_private_key = ec.generate_private_key(ec.SECP256R1(), default_backend())
+        server_ephemeral_public_key = server_ephemeral_private_key.public_key().public_bytes(  
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
         
-        # Get stored public key
-        stored_public_key_pem = base64.b64decode(organization['subjects'][username]['public_key'])
-        stored_public_key = serialization.load_pem_public_key(stored_public_key_pem)
-        stored_public_key_bytes = stored_public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
+        # Perform ECDH key exchange
+        shared_key = server_ephemeral_private_key.exchange(ec.ECDH(), client_ephemeral_public_key)
         
-        # Compare keys
-        if derived_public_key_bytes != stored_public_key_bytes:
-            return jsonify({'error': 'Invalid password or mismatched public key'}), 400
-
-        
-        # Handshake for a new session
-        # - Generate server private/public key pair
-        server_private_key = ec.generate_private_key(current_app.EC_CURVE, default_backend())
-        server_public_key_bytes = server_private_key.public_key().public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
-        
-        # - Decode client's session public key
-        session_public_key_pem = base64.b64decode(session_public_key)
-        session_public_key = serialization.load_pem_public_key(session_public_key_pem)
-
-        # - Perform ECDH key exchange
-        shared_key = server_private_key.exchange(ec.ECDH(), session_public_key)
-
-        # - Derive a shared session key
         derived_key = HKDF(
             algorithm=hashes.SHA256(),
             length=32,
             salt=None,
             info=b'handshake data',
-            backend=default_backend()
         ).derive(shared_key)
+        derived_key_base64 = base64.b64encode(derived_key).decode('utf-8')
         
-        # Store session details (temporary storage)
-        sessions = current_app.sessions
-        session_id = len(sessions) + 1
-        sessions[session_id] = {
-            'organization': organization_name,
+        # Prepare response
+        session_id = len(current_app.sessions) + 1
+        current_app.sessions[session_id] = {
+            'organization': organization,
             'username': username,
             'derived_key': derived_key
         }
         
+        associated_data = {
+            'session_id': session_id,
+            'server_ephemeral_public_key': base64.b64encode(server_ephemeral_public_key).decode('utf-8')
+        }
+        
+        associated_data_bytes = json.dumps(associated_data).encode()
+        associated_data_base64 = base64.b64encode(associated_data_bytes).decode('utf-8')
+        
+        # TODO: fix this !!!!! store the private key in the app object
+        password = 'jorge'.encode()
+        sk = ec.derive_private_key(int.from_bytes(password, 'big'), current_app.EC_CURVE, default_backend())
+        
+        signature = sk.sign(
+            associated_data_bytes,
+            ec.ECDSA(hashes.SHA256())
+        )
+               
         # Respond with session info
         return jsonify({
-            'session_id': session_id,
-            'public_key': server_public_key_bytes.decode()
+            'associated_data': associated_data_base64,
+            'signature': base64.b64encode(signature).decode('utf-8')
         }), 200
     
-    except Exception as e:
-        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+    except InvalidSignature:
+        return jsonify({'error': 'Invalid signature'}), 400
+    
 
 @auth_bp.route('/session/<int:session_id>', methods=['POST'])
 def refresh_session_keys(session_id):
