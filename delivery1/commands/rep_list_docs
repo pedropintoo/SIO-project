@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 subject.py rep_list_docs $@
+python3 ../subject.py rep_list_docs $@
