@@ -1,9 +1,9 @@
 from flask import Flask
-from app.auth import auth_bp
-from app.file import file_bp
-from app.session import session_bp
-from app.organization import organization_bp
-from organizations_db.organizations_db import OrganizationsDB
+from server.app.auth import auth_bp
+from server.app.file import file_bp
+from server.app.session import session_bp
+from server.app.organization import organization_bp
+from server.organizations_db.organizations_db import OrganizationsDB
 from cryptography.hazmat.primitives.asymmetric import ec
 
 def create_app():

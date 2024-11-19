@@ -1,0 +1,2 @@
+#!/bin/bash
+python3 subject.py rep_list_subjects $1 $2

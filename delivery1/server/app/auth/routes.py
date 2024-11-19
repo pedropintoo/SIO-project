@@ -1,7 +1,7 @@
 # api path: /api/v1/auth/ 
 from . import auth_bp
 from flask import request, jsonify, current_app
-from organizations_db.organizations_db import OrganizationsDB
+from server.organizations_db.organizations_db import OrganizationsDB
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -62,20 +62,21 @@ def create_session():
     signature = data.get('signature')
     organization = associated_data.get('organization')
     username = associated_data.get('username')
-    client_ephemeral_public_key = serialization.load_pem_public_key(base64.b64decode(associated_data.get('client_ephemeral_public_key')))
+    client_ephemeral_public_key_base64 = associated_data.get('client_ephemeral_public_key')
+    client_ephemeral_public_key = serialization.load_pem_public_key(base64.b64decode(client_ephemeral_public_key_base64.encode("utf-8")))
     
     # Get client public key
     result = current_app.organization_db.retrieve_subject(organization, username)
     if result is None:
         return jsonify({'error': 'Invalid organization or username'}), 400
 
-    client_public_key_pem = base64.b64decode(result.get('public_key'))
-    client_public_key = serialization.load_pem_public_key(client_public_key_pem)
+    client_public_key_base64 = result['public_key']
+    client_public_key = serialization.load_pem_public_key(base64.b64decode(client_public_key_base64.encode("utf-8")))
     
     try:
         # Verify signature
         client_public_key.verify(
-            base64.b64decode(signature),
+            base64.b64decode(signature.encode("utf-8")),
             json.dumps(associated_data).encode(),
             ec.ECDSA(hashes.SHA256())
         )
@@ -86,6 +87,7 @@ def create_session():
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
+        server_ephemeral_public_key_base64 = base64.b64encode(server_ephemeral_public_key).decode("utf-8")
         
         # Perform ECDH key exchange
         shared_key = server_ephemeral_private_key.exchange(ec.ECDH(), client_ephemeral_public_key)
@@ -96,23 +98,24 @@ def create_session():
             salt=None,
             info=b'handshake data',
         ).derive(shared_key)
-        derived_key_base64 = base64.b64encode(derived_key).decode('utf-8')
+        derived_key_base64 = base64.b64encode(derived_key).decode("utf-8")
         
         # Prepare response
         session_id = len(current_app.sessions) + 1
         current_app.sessions[session_id] = {
             'organization': organization,
             'username': username,
-            'derived_key': derived_key
+            'derived_key': derived_key_base64,
+            'msg_id': 0
         }
         
         associated_data = {
             'session_id': session_id,
-            'server_ephemeral_public_key': base64.b64encode(server_ephemeral_public_key).decode('utf-8')
+            'server_ephemeral_public_key': server_ephemeral_public_key_base64
         }
         
         associated_data_bytes = json.dumps(associated_data).encode()
-        associated_data_base64 = base64.b64encode(associated_data_bytes).decode('utf-8')
+        associated_data_base64 = base64.b64encode(associated_data_bytes).decode("utf-8")
         
         # TODO: fix this !!!!! store the private key in the app object
         password = 'jorge'.encode()
@@ -126,7 +129,7 @@ def create_session():
         # Respond with session info
         return jsonify({
             'associated_data': associated_data_base64,
-            'signature': base64.b64encode(signature).decode('utf-8')
+            'signature': base64.b64encode(signature).decode("utf-8")
         }), 200
     
     except InvalidSignature:

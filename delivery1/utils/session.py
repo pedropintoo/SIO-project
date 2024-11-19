@@ -1,0 +1,149 @@
+import json
+from utils import symmetric
+import base64
+from cryptography.exceptions import InvalidTag
+import requests
+
+
+def session_info_from_file(session_file):
+    """
+    Reads session details from a file.
+    Args:
+        session_file (str): The path to the session file.
+    Returns:
+        dict: The session details.
+    """
+    session = None
+    with open(session_file, 'r') as f:
+        session = json.load(f)
+    return session
+
+def encapsulate_session_data(plaintext, session_id, derived_key, msg_id):
+    """
+    Encrypts and processes data to be sent to the client, with respective session details (with encryption & authentication).
+    Args:
+        plaintext (dict): The data to be encrypted.
+        session_id (int): The session ID.
+        derived_key (str): The derived key.
+        msg_id (int): The message ID.
+    Returns:
+        dict: The encrypted data to be sent to the client.
+    """
+
+    # Authenticated but not encrypted data
+    associated_data = {'session_id': session_id, 'msg_id': msg_id}
+    associated_data_bytes = json.dumps(associated_data).encode()    
+
+    # Encrypt data
+    plaintext_bytes = json.dumps(plaintext).encode()
+    derived_key_bytes = base64.b64decode(derived_key)
+    nonce, ciphertext = symmetric.encrypt(derived_key_bytes, plaintext_bytes, associated_data_bytes)
+    
+    encrypted_data = {
+        'nonce': base64.b64encode(nonce),
+        'ciphertext': base64.b64encode(ciphertext)
+    }
+
+    return {'associated_data': associated_data, 'encrypted_data': encrypted_data}
+
+def decapsulate_session_data(data, sessions):
+    """
+    Decrypts and processes data received from the client, with respective session details (with decryption & authentication).
+    Args:
+        request.get_json() (flask.Request): The request object containing the encrypted data.
+        sessions (dict): The dictionary containing session details.
+    Returns:
+        dict: The decrypted data received from the client.
+    """
+        
+    # Associated data (authenticated but not encrypted)
+    associated_data = data.get('associated_data')
+    session_id = associated_data.get('session_id')
+    msg_id = associated_data.get('msg_id')
+    
+    # Encrypted data
+    encrypted_data = data.get('encrypted_data')
+    nonce = encrypted_data.get('nonce')
+    ciphertext = encrypted_data.get('ciphertext')
+    
+    # Get session details
+    session = sessions.get(session_id)
+    if session is None:
+        raise Exception(f'Session {session_id} not found')
+    
+    # Check for replays
+    if msg_id <= session['msg_id']:
+        raise Exception(f'Replay attack detected for session {session_id}')
+    
+    # Get session details
+    organization = session['organization']
+    username = session['username']
+    derived_key = session['derived_key']
+
+    # Validate integrity & decrypt data
+    try: 
+        plaintext_bytes = symmetric.decrypt(derived_key, base64.b64decode(nonce.encode("utf-8")), base64.b64decode(ciphertext.encode("utf-8")), json.dumps(associated_data).encode())
+    except InvalidTag:
+        raise Exception(f'Invalid tag for session {session_id} {derived_key} {ciphertext} {nonce} {data}')   
+    except Exception as e:
+        raise Exception(f'Error decrypting data for session {session} {e}')
+
+    plaintext = json.loads(plaintext_bytes.decode())
+    return plaintext, organization, username, msg_id, session_id, derived_key
+
+def send_session_data(logger, server_address, command, endpoint, session_file, plaintext):
+    
+    # endpoint = '/api/v1/organizations/subjects/state'
+    # plaintext = {'username': username}
+    # send_data(self.logger, self.server_address, endpoint, session_file, plaintext)
+
+    session = session_info_from_file(session_file)
+
+    msg_id = session['msg_id'] + 1 # prevent replay attacks
+    session_id = session['session_id']
+    derived_key = session['derived_key']
+    organization = session['organization']
+    usernameSession = session['username']
+
+    # Update session file
+    with open(session_file, 'w') as f:
+        session['msg_id'] = msg_id
+        json.dump(session, f, indent=4)
+        
+    # Add integrity and confidentiality to data
+    data = encapsulate_session_data(
+        plaintext, 
+        session_id,
+        derived_key,
+        msg_id
+    )
+    
+    logger.info(f'Derived key: {derived_key}')
+    logger.info(f'Ciphered data: {data["encrypted_data"]["ciphertext"]}')
+    logger.info(f'Nonce: {data["encrypted_data"]["nonce"]}')
+    logger.info(f'Associated data: {data["associated_data"]}')
+    logger.info(f'Data: {data}')
+    
+    # Send data to server
+    if command == "get":
+        request_func = requests.get
+    elif command == "post":
+        request_func = requests.post
+
+    result = request_func(f'{server_address}{endpoint}', json={'associated_data': data["associated_data"], 'encrypted_data': data["encrypted_data"]})
+    
+    if result.status_code != 200:
+        logger.error(f'Failed to execute default command: {endpoint}')
+        logger.error(f'Server response: {result.text}')
+        return None
+
+    sessions = {session_id: {"msg_id": msg_id, "organization": organization, "derived_key": derived_key, "username": usernameSession}}
+    logger.info(f'Sessions: {sessions}')
+    plaintext, _, _, msg_id, _, _ = decapsulate_session_data(json.loads(result.text), sessions)
+
+    # Update session file
+    with open(session_file, 'w') as f:
+        session['msg_id'] = msg_id
+        json.dump(session, f, indent=4)
+
+    return plaintext

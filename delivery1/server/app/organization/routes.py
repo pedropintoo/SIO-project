@@ -1,8 +1,9 @@
 # api path: /api/v1/organizations/ 
 from . import organization_bp
 from flask import jsonify, request, current_app
-from organizations_db.organizations_db import OrganizationsDB
+from server.organizations_db.organizations_db import OrganizationsDB
 from utils import symmetric
+from utils.session import encapsulate_session_data, decapsulate_session_data, session_info_from_file
 from cryptography.exceptions import InvalidTag
 import json
 import base64
@@ -224,54 +225,32 @@ def list_subject_state(username):
 
 @organization_bp.route('/subjects/state', methods=['GET'])
 def list_all_subjects_state():
-    # TODO: Logic to show the state of all subjects
-    data = request.get_json()
-    associated_data = data.get('associated_data')
-    encrypted_data = data.get('encrypted_data')
+    plaintext, organization, username, msg_id, session_id, derived_key = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-    if not associated_data or not encrypted_data:
-        return jsonify({'error': f'Missing required fields: {associated_data} {encrypted_data}'}), 400
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
 
-    # Associated data
-    session_id = associated_data.get('session_id')
-    msg_id = associated_data.get('msg_id')
-    
-    # Encrypted data
-    nonce = encrypted_data.get('nonce')
-    ciphertext = encrypted_data.get('ciphertext')
-    
-    # Validate session
-    if not current_app.sessions.get(session_id):
-        return jsonify({'error': 'Invalid session'}), 400
-    
-    organization = current_app.sessions[session_id].get('organization')
-    username = current_app.sessions[session_id].get('username')
-    derived_key = current_app.sessions[session_id].get('derived_key')
-    
-    # Validate signature & decrypt data
-    try:
-        plaintext_bytes = symmetric.decrypt(derived_key, ciphertext.encode(), nonce.encode(), json.dumps(associated_data).encode())   
-    except InvalidTag:
-        return jsonify({
-            "error": "Encryption failed",
-            "derived_key": derived_key,
-            "ciphertext": ciphertext,
-            "nonce": nonce,
-            "associated_data": associated_data
-        }), 400
-
-    plaintext = json.loads(plaintext_bytes.decode())
-
-    plaintext_username = plaintext.get('username')
-    
-    # For a specific subject
+    # If provided, get for a specific subject
+    plaintext_username = plaintext.get(username)
     if plaintext_username:
         result = current_app.organization_db.retrieve_subject(organization, plaintext_username)
-        return jsonify(f"{result['name'] ({result['state']})}"), 200
+        response_plaintext = {}
 
-    # For all subjects in the organization
+    # Get for all subjects in the organization
     result = current_app.organization_db.retrieve_subjects(organization)
-    return jsonify(result.map(lambda x: f"{x['name'] ({x['state']})}")), 200
+
+#  {'jj': {'name': 'jj', 'email': 'jj@ua.pt', 'public_key': 'LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFWDRjU2hsVFdFcXFxM0cxdStFOUVsTmxYMFBqVAozVjlsV0IydG9sTi9SaHV3RVFCazR0SGRka1dBVDF5TDU1V2g1VmNiY0ZidGhuMEUxTHVYVXlhMVd3PT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==', 'state': 'active'}}}
+    response_plaintext = {}
+
+    data = encapsulate_session_data(
+        response_plaintext,
+        session_id,
+        derived_key,
+        msg_id
+    )
+    
+    return jsonify(data), 200
 
 
 # Permissions Endpoints
@@ -329,7 +308,7 @@ def list_documents():
 
     # Validate signature & decrypt data
     try:
-        plaintext_bytes = symmetric.decrypt(derived_key, ciphertext.encode(), nonce.encode(), json.dumps(associated_data).encode())   
+        plaintext_bytes = symmetric.decrypt(derived_key, base64.b64decode(nonce), base64.b64decode(ciphertext), json.dumps(associated_data).encode())   
     except InvalidTag:
         return jsonify({
             "error": "Encryption failed",
