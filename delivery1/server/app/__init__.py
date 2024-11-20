@@ -6,6 +6,7 @@ from server.app.session import session_bp
 from server.app.organization import organization_bp
 from server.organizations_db.organizations_db import OrganizationsDB
 from cryptography.hazmat.primitives.asymmetric import ec
+import logging
 
 def create_app():
     app = Flask(__name__)
@@ -21,5 +22,7 @@ def create_app():
     app.EC_CURVE = ec.SECP256R1()
     app.files_location = os.getenv('FILES_LOCATION')
     app.MASTER_KEY = os.getenv('MASTER_KEY')
+    app.logger = logging.getLogger('app')
+    logging.basicConfig(level=logging.DEBUG)
     
     return app

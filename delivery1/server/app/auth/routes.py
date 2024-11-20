@@ -119,6 +119,7 @@ def create_session():
         associated_data_bytes = json.dumps(associated_data).encode("utf-8")
         associated_data_string = associated_data_bytes.decode("utf-8")
         
+        
         password = current_app.MASTER_KEY.encode("utf-8")
         secret_key = ec.derive_private_key(int.from_bytes(password, 'big'), current_app.EC_CURVE, default_backend())
         
