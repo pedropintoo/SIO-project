@@ -85,19 +85,16 @@ def decapsulate_session_data(data, sessions):
     try: 
         plaintext_bytes = symmetric.decrypt(bytes.fromhex(derived_key_hex), bytes.fromhex(nonce_hex), bytes.fromhex(ciphertext_hex), json.dumps(associated_data).encode("utf-8"))
     except InvalidTag:
-        raise Exception(f'Invalid tag for session {data}')   
+        raise Exception(f'Error decrypting data for session {session_id} (InvalidTag)') 
+    
     except Exception as e:
-        raise Exception(f'Error decrypting data for session {session} {e}')
+        raise Exception(f'Error decrypting data for session {session_id} ({e})')
 
     plaintext = json.loads(plaintext_bytes.decode("utf-8"))
     
     return plaintext, organization, username, msg_id, session_id, derived_key_hex
 
 def send_session_data(logger, server_address, command, endpoint, session_file, plaintext):
-    
-    # endpoint = '/api/v1/organizations/subjects/state'
-    # plaintext = {'username': username}
-    # send_data(self.logger, self.server_address, endpoint, session_file, plaintext)
 
     session = session_info_from_file(session_file)
 
@@ -133,9 +130,7 @@ def send_session_data(logger, server_address, command, endpoint, session_file, p
     result = request_func(f'{server_address}{endpoint}', json={'associated_data': data["associated_data"], 'encrypted_data': data["encrypted_data"]})
 
     if result.status_code != 200:
-        logger.error(f'Failed to execute default command: {endpoint}')
-        logger.error(f'Server response: {result.text}')
-        return None
+        raise Exception(f'[{result.status_code}] Failed to execute default command: {endpoint}. Response: {result.text}')
 
     sessions = {session_id: {"msg_id": msg_id, "organization": organization, "derived_key": derived_key_hex, "username": usernameSession}}
     plaintext, _, _, msg_id, _, _ = decapsulate_session_data(json.loads(result.text), sessions)

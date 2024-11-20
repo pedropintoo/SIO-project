@@ -98,6 +98,8 @@ class CommandsParser():
             logger.error(f"Error executing command '{command}': {e}")
             return -1
         
+        return 0
+        
     ## Local commands
 
     def parser_rep_subject_credentials(self):
