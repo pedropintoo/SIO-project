@@ -18,7 +18,7 @@
             "name": "Another of other user",
             "email": "anotherofotheruser@example.com",
             "public_key": "ASDASD123132131",
-            "state": "suspend"
+            "state": "suspended"
         }
     },
     "roles": {
@@ -30,12 +30,12 @@
         "tios_de_aveiro": {
           "subjects": ["user1", "user43"],
           "permissions": ["DOC_NEW"],
-          "state": "suspend"
+          "state": "suspended"
         },
         "losers": {
           "subjects": ["user1"],
           "permissions": [],
-          "state": "suspend"
+          "state": "suspended"
         }
     },
     "documents_metadata": {

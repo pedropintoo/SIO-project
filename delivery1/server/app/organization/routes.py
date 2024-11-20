@@ -6,7 +6,10 @@ from utils import symmetric
 from utils.session import encapsulate_session_data, decapsulate_session_data, session_info_from_file
 from cryptography.exceptions import InvalidTag
 import json
-import base64
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 @organization_bp.route('/', methods=['GET'])
 def list_orgs():
@@ -151,21 +154,39 @@ def update_role_state(role):
     
 # Subjects Endpoints
 @organization_bp.route("/subjects", methods=['POST'])
-def add_subject(username, name, email, public_key, state):
-    # TODO: Logic to add a subject
-    session = request.args.get('session')
+def add_subject():
+    plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-    # Get organization name from session
-    organization_name = current_app.organization_db.get_organization_name(session)
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Logic of the endpoint ############################
+    plaintext_username = plaintext.get("username")
+    plaintext_email = plaintext.get("email")
+    plaintext_name = plaintext.get("name")
+    plaintext_public_key = plaintext.get("public_key")
 
     subject_details = {
-        'name': name,
-        'email': email,
-        'public_key': public_key,
-        'state': state
+        'name': plaintext_name,
+        'email': plaintext_email,
+        'public_key': plaintext_public_key,
+        'state': "active"
     }
+    current_app.organization_db.add_subject(organization_name, plaintext_username, subject_details)
+    response = {
+        'state': f'Subject "{plaintext_username}" added to organization "{organization_name}" successfully'
+    }
+    ###############################################################################
 
-    current_app.organization_db.add_subject(organization_name, username, subject_details)
+    data = encapsulate_session_data(
+        response,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
 
 @organization_bp.route('/subjects/<string:username>/roles', methods=['GET'])
 def list_roles_subject(username):
@@ -184,28 +205,48 @@ def list_roles_subject(username):
 
     return jsonify(subject_roles), 200        
 
-@organization_bp.route('/subjects/<string:username>/state', methods=['PUT'])
-def update_subject_state(username):
-    # TODO: Logic to change a subject state
-    session = request.args.get('session')
+@organization_bp.route('/subjects/state', methods=['PUT'])
+def update_subject_state():
+    plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-    # Get organization name from session
-    organization_name = current_app.organization_db.get_organization_name(session)
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
 
-    subject_data = current_app.organization_db.retrieve_subject(organization_name, username)
+    ############################ Logic of the endpoint ############################
+    plaintext_username = plaintext.get("username")
+    plaintext_state = plaintext.get("state")
+    subject_data = current_app.organization_db.retrieve_subject(organization_name, plaintext_username)
 
     if not subject_data:
-        return jsonify({'error': f'Subject "{username}" not found in organization "{organization_name}"'}), 404
+        response = {
+            'error': f'Subject "{plaintext_username}" not found in organization "{organization_name}"'
+        }
+        code = 404
+    else:
+        if plaintext_state != 'active' and plaintext_state != 'suspended':
+            response = {
+                'error': f'Invalid state "{plaintext_state}". State must be "active" or "suspend"'
+            }
+            code = 400
+        else:
+            subject_data["state"] = plaintext_state
+            
+            current_app.organization_db.update_subject(organization_name, plaintext_username, subject_data)
+            response = {
+                'state': f'Subject "{plaintext_username}" state updated to "{subject_data["state"]}" in organization "{organization_name}"'
+            }
+            code = 200
+    ###############################################################################
 
-    data = request.get_json()
-    new_state = data.get('state')
-    
-    if new_state == 'active':
-        subject_data["state"] = 'active'
-    elif new_state == 'suspend':
-        subject_data["state"] = 'suspend'
-    
-    current_app.organization_db.update_subject(organization_name, username, subject_data)
+    data = encapsulate_session_data(
+        response,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), code
 
 @organization_bp.route('/subjects/<string:username>/state', methods=['GET'])
 def list_subject_state(username):
@@ -225,31 +266,33 @@ def list_subject_state(username):
 
 @organization_bp.route('/subjects/state', methods=['GET'])
 def list_all_subjects_state():
-    plaintext, organization, username, msg_id, session_id, derived_key = decapsulate_session_data(request.get_json(), current_app.sessions)
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
 
-    # If provided, get for a specific subject
-    plaintext_username = plaintext.get(username)
+    ############################ Logic of the endpoint ############################
+    plaintext_username = plaintext.get("username")
     if plaintext_username:
-        result = current_app.organization_db.retrieve_subject(organization, plaintext_username)
-        response_plaintext = {}
-
-    # Get for all subjects in the organization
-    result = current_app.organization_db.retrieve_subjects(organization)
-
-#  {'jj': {'name': 'jj', 'email': 'jj@ua.pt', 'public_key': 'LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFWDRjU2hsVFdFcXFxM0cxdStFOUVsTmxYMFBqVAozVjlsV0IydG9sTi9SaHV3RVFCazR0SGRka1dBVDF5TDU1V2g1VmNiY0ZidGhuMEUxTHVYVXlhMVd3PT0KLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==', 'state': 'active'}}}
-    response_plaintext = {}
+        new_plaintext = current_app.organization_db.retrieve_subject(organization, plaintext_username)
+        new_plaintext = {plaintext_username: new_plaintext.get('state')}
+    else:
+        result = current_app.organization_db.retrieve_subjects(organization)
+        
+        new_plaintext = {}
+        logger.info(result)
+        for username, subject_data in result.items():
+            new_plaintext[username] = subject_data.get('state')
+    ###############################################################################
 
     data = encapsulate_session_data(
-        response_plaintext,
+        new_plaintext,
         session_id,
-        derived_key,
+        derived_key_hex,
         msg_id
     )
-    
+        
     return jsonify(data), 200
 
 
@@ -283,53 +326,29 @@ def list_roles_permission(permission):
 # Documents Endpoints
 @organization_bp.route("/documents", methods=['GET'])
 def list_documents():
-    data = request.get_json()
-    associated_data = data.get('associated_data')
-    encrypted_data = data.get('encrypted_data')
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-    if not associated_data or not encrypted_data:
-        return jsonify({'error': f'Missing required fields: {associated_data} {encrypted_data}'}), 400
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Logic of the endpoint ############################
+    creator = plaintext.get("creator")
+    date_filter = plaintext.get("date_filter")
+    date_str = plaintext.get("date_str")
     
-    # Associated data
-    session_id = associated_data.get('session_id')
-    msg_id = associated_data.get('msg_id')
+    new_plaintext = current_app.organization_db.list_documents(organization, creator, date_filter, date_str)
+    ###############################################################################
 
-    # Encrypted data
-    nonce = encrypted_data.get('nonce')
-    ciphertext = encrypted_data.get('ciphertext')
-
-    # Validate session
-    if not current_app.sessions.get(session_id):
-        return jsonify({'error': 'Invalid session'}), 400
-
-    organization = current_app.sessions[session_id].get('organization')
-    username = current_app.sessions[session_id].get('username')
-    derived_key = current_app.sessions[session_id].get('derived_key')    
-
-    # Validate signature & decrypt data
-    try:
-        plaintext_bytes = symmetric.decrypt(derived_key, base64.b64decode(nonce), base64.b64decode(ciphertext), json.dumps(associated_data).encode())   
-    except InvalidTag:
-        return jsonify({
-            "error": "Encryption failed",
-            "derived_key": derived_key,
-            "ciphertext": ciphertext,
-            "nonce": nonce,
-            "associated_data": associated_data
-        }), 400
-
-    plaintext = json.loads(plaintext_bytes.decode())
-
-    plaintext_creator = plaintext.get('creator')
-    plaintext_date_filter = plaintext.get('date_filter')
-    plaintext_date_str = plaintext.get('date')
-
-    # Get organization name from session
-    organization_name = current_app.organization_db.get_organization_name(session_id)
-
-    documents = current_app.organization_db.list_documents(organization_name, plaintext_creator, plaintext_date_filter, plaintext_date_str)
-
-    return jsonify(documents), 200
+    data = encapsulate_session_data(
+        new_plaintext,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+        
+    return jsonify(data), 200
+    
 
 @organization_bp.route("/documents", methods=['POST'])
 def create_document():

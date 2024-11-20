@@ -50,6 +50,8 @@ class OrganizationsDB:
             {"name": organization_name},
             {"subjects": 1}
         )
+        
+        result = result.get('subjects', {})
         return result
 
     def update_subject(self, organization_name, subject_name, subject_data):

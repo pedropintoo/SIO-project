@@ -1,6 +1,5 @@
 import json
 from utils import symmetric
-import base64
 from cryptography.exceptions import InvalidTag
 import requests
 
@@ -18,7 +17,7 @@ def session_info_from_file(session_file):
         session = json.load(f)
     return session
 
-def encapsulate_session_data(plaintext, session_id, derived_key, msg_id):
+def encapsulate_session_data(plaintext, session_id, derived_key_hex, msg_id):
     """
     Encrypts and processes data to be sent to the client, with respective session details (with encryption & authentication).
     Args:
@@ -31,17 +30,19 @@ def encapsulate_session_data(plaintext, session_id, derived_key, msg_id):
     """
 
     # Authenticated but not encrypted data
-    associated_data = {'session_id': session_id, 'msg_id': msg_id}
-    associated_data_bytes = json.dumps(associated_data).encode()    
+    associated_data = {'msg_id': msg_id, 'session_id': session_id}
+    associated_data_bytes = json.dumps(associated_data).encode("utf-8")    
+    associated_data_string = associated_data_bytes.decode("utf-8")
 
     # Encrypt data
-    plaintext_bytes = json.dumps(plaintext).encode()
-    derived_key_bytes = base64.b64decode(derived_key)
-    nonce, ciphertext = symmetric.encrypt(derived_key_bytes, plaintext_bytes, associated_data_bytes)
+    plaintext_bytes = json.dumps(plaintext).encode("utf-8")
+    derived_key_bytes = bytes.fromhex(derived_key_hex)
     
+    nonce, ciphertext = symmetric.encrypt(derived_key_bytes, plaintext_bytes, associated_data_bytes)
+
     encrypted_data = {
-        'nonce': base64.b64encode(nonce),
-        'ciphertext': base64.b64encode(ciphertext)
+        'nonce': nonce.hex(),
+        'ciphertext': ciphertext.hex()
     }
 
     return {'associated_data': associated_data, 'encrypted_data': encrypted_data}
@@ -63,8 +64,8 @@ def decapsulate_session_data(data, sessions):
     
     # Encrypted data
     encrypted_data = data.get('encrypted_data')
-    nonce = encrypted_data.get('nonce')
-    ciphertext = encrypted_data.get('ciphertext')
+    nonce_hex = encrypted_data.get('nonce')
+    ciphertext_hex = encrypted_data.get('ciphertext')
     
     # Get session details
     session = sessions.get(session_id)
@@ -78,18 +79,19 @@ def decapsulate_session_data(data, sessions):
     # Get session details
     organization = session['organization']
     username = session['username']
-    derived_key = session['derived_key']
+    derived_key_hex = session['derived_key']
 
     # Validate integrity & decrypt data
     try: 
-        plaintext_bytes = symmetric.decrypt(derived_key, base64.b64decode(nonce.encode("utf-8")), base64.b64decode(ciphertext.encode("utf-8")), json.dumps(associated_data).encode())
+        plaintext_bytes = symmetric.decrypt(bytes.fromhex(derived_key_hex), bytes.fromhex(nonce_hex), bytes.fromhex(ciphertext_hex), json.dumps(associated_data).encode("utf-8"))
     except InvalidTag:
-        raise Exception(f'Invalid tag for session {session_id} {derived_key} {ciphertext} {nonce} {data}')   
+        raise Exception(f'Invalid tag for session {data}')   
     except Exception as e:
         raise Exception(f'Error decrypting data for session {session} {e}')
 
-    plaintext = json.loads(plaintext_bytes.decode())
-    return plaintext, organization, username, msg_id, session_id, derived_key
+    plaintext = json.loads(plaintext_bytes.decode("utf-8"))
+    
+    return plaintext, organization, username, msg_id, session_id, derived_key_hex
 
 def send_session_data(logger, server_address, command, endpoint, session_file, plaintext):
     
@@ -101,7 +103,7 @@ def send_session_data(logger, server_address, command, endpoint, session_file, p
 
     msg_id = session['msg_id'] + 1 # prevent replay attacks
     session_id = session['session_id']
-    derived_key = session['derived_key']
+    derived_key_hex = session['derived_key']
     organization = session['organization']
     usernameSession = session['username']
 
@@ -114,31 +116,28 @@ def send_session_data(logger, server_address, command, endpoint, session_file, p
     data = encapsulate_session_data(
         plaintext, 
         session_id,
-        derived_key,
+        derived_key_hex,
         msg_id
     )
-    
-    logger.info(f'Derived key: {derived_key}')
-    logger.info(f'Ciphered data: {data["encrypted_data"]["ciphertext"]}')
-    logger.info(f'Nonce: {data["encrypted_data"]["nonce"]}')
-    logger.info(f'Associated data: {data["associated_data"]}')
-    logger.info(f'Data: {data}')
-    
+        
     # Send data to server
     if command == "get":
         request_func = requests.get
     elif command == "post":
         request_func = requests.post
+    elif command == "put":
+        request_func = requests.put
+    elif command == "delete":
+        request_func = requests.delete    
 
     result = request_func(f'{server_address}{endpoint}', json={'associated_data': data["associated_data"], 'encrypted_data': data["encrypted_data"]})
-    
+
     if result.status_code != 200:
         logger.error(f'Failed to execute default command: {endpoint}')
         logger.error(f'Server response: {result.text}')
         return None
 
-    sessions = {session_id: {"msg_id": msg_id, "organization": organization, "derived_key": derived_key, "username": usernameSession}}
-    logger.info(f'Sessions: {sessions}')
+    sessions = {session_id: {"msg_id": msg_id, "organization": organization, "derived_key": derived_key_hex, "username": usernameSession}}
     plaintext, _, _, msg_id, _, _ = decapsulate_session_data(json.loads(result.text), sessions)
 
     # Update session file

@@ -69,7 +69,7 @@ def parse_args(logger, state):
         logger.info('Overriding REP_ADDRESS from command line')
 
     if args.command:
-        logger.info("Command: " + args.command)
+        logger.info("\33[32mCommand: " + args.command + "\33[0m")
 
     return args, state
 

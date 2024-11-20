@@ -8,7 +8,6 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
 from cryptography.exceptions import InvalidSignature
-import base64
 import json
 
 @auth_bp.route('/organization', methods=['POST'])
@@ -59,25 +58,28 @@ def create_session():
     
     # Get body data
     associated_data = data.get('associated_data')
-    signature = data.get('signature')
+    signature_hex = data.get('signature')
     organization = associated_data.get('organization')
     username = associated_data.get('username')
-    client_ephemeral_public_key_base64 = associated_data.get('client_ephemeral_public_key')
-    client_ephemeral_public_key = serialization.load_pem_public_key(base64.b64decode(client_ephemeral_public_key_base64.encode("utf-8")))
+    
+    client_ephemeral_public_key_pem = associated_data.get('client_ephemeral_public_key')
+    client_ephemeral_public_key_bytes = client_ephemeral_public_key_pem.encode("utf-8")
+    client_ephemeral_public_key = serialization.load_pem_public_key(client_ephemeral_public_key_bytes, backend=default_backend())
     
     # Get client public key
     result = current_app.organization_db.retrieve_subject(organization, username)
     if result is None:
         return jsonify({'error': 'Invalid organization or username'}), 400
 
-    client_public_key_base64 = result['public_key']
-    client_public_key = serialization.load_pem_public_key(base64.b64decode(client_public_key_base64.encode("utf-8")))
+    client_public_key_string = result['public_key']
+    client_public_key_pem = client_public_key_string.encode("utf-8")
+    client_public_key = serialization.load_pem_public_key(client_public_key_pem, backend=default_backend())
     
     try:
         # Verify signature
         client_public_key.verify(
-            base64.b64decode(signature.encode("utf-8")),
-            json.dumps(associated_data).encode(),
+            bytes.fromhex(signature_hex),
+            json.dumps(associated_data).encode("utf-8"),
             ec.ECDSA(hashes.SHA256())
         )
         
@@ -87,7 +89,7 @@ def create_session():
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
-        server_ephemeral_public_key_base64 = base64.b64encode(server_ephemeral_public_key).decode("utf-8")
+        server_ephemeral_public_key_string = server_ephemeral_public_key.decode("utf-8")
         
         # Perform ECDH key exchange
         shared_key = server_ephemeral_private_key.exchange(ec.ECDH(), client_ephemeral_public_key)
@@ -98,38 +100,38 @@ def create_session():
             salt=None,
             info=b'handshake data',
         ).derive(shared_key)
-        derived_key_base64 = base64.b64encode(derived_key).decode("utf-8")
+        derived_key_hex = derived_key.hex()
         
         # Prepare response
         session_id = len(current_app.sessions) + 1
         current_app.sessions[session_id] = {
             'organization': organization,
             'username': username,
-            'derived_key': derived_key_base64,
+            'derived_key': derived_key_hex,
             'msg_id': 0
         }
         
         associated_data = {
             'session_id': session_id,
-            'server_ephemeral_public_key': server_ephemeral_public_key_base64
+            'server_ephemeral_public_key': server_ephemeral_public_key_string
         }
         
-        associated_data_bytes = json.dumps(associated_data).encode()
-        associated_data_base64 = base64.b64encode(associated_data_bytes).decode("utf-8")
+        associated_data_bytes = json.dumps(associated_data).encode("utf-8")
+        associated_data_string = associated_data_bytes.decode("utf-8")
         
         # TODO: fix this !!!!! store the private key in the app object
         password = 'jorge'.encode()
         sk = ec.derive_private_key(int.from_bytes(password, 'big'), current_app.EC_CURVE, default_backend())
         
-        signature = sk.sign(
+        response_signature = sk.sign(
             associated_data_bytes,
             ec.ECDSA(hashes.SHA256())
         )
                
         # Respond with session info
         return jsonify({
-            'associated_data': associated_data_base64,
-            'signature': base64.b64encode(signature).decode("utf-8")
+            'associated_data': associated_data_string,
+            'signature': response_signature.hex()
         }), 200
     
     except InvalidSignature:

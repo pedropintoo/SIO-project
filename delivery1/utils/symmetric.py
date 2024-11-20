@@ -32,4 +32,5 @@ def decrypt(key, nonce, ciphertext, associated_data):
         bytes: The decrypted plaintext.
     """
     aesgcm = AESGCM(key)
+    # raise Exception("nonce:", nonce, "ciphertext:", ciphertext, "key:", key)
     return aesgcm.decrypt(nonce, ciphertext, associated_data)

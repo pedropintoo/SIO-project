@@ -8,7 +8,6 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.exceptions import InvalidSignature
 import hashlib
 import json
-import base64
 from flask import jsonify
 
 from utils import symmetric
@@ -43,7 +42,8 @@ class Local(Command):
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
-        # Store the public key in the credentials file
+
+       # Store the public key in the credentials file
         with open(credentials_file, 'wb') as f:
             f.write(public_key_bytes)
         self.logger.debug(f'Public key stored in credentials file: {credentials_file}')
@@ -68,16 +68,12 @@ class Auth(Command):
         with open(public_key_file, 'rb') as f:
             pem_data = f.read()
         
-        if pem_data is None:
-            self.logger.error(f'Failed to read public key file: {public_key_file}')
-            return -1
-        
-        public_key = serialization.load_pem_public_key(pem_data, None).public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
-        
-        public_key_base64 = base64.b64encode(public_key).decode("utf-8")
+        public_key = serialization.load_pem_public_key(pem_data, backend=default_backend())
+        public_key_pem = public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
+        public_key_string = public_key_pem.decode("utf-8")
         
         self.logger.debug(f'Starting organization creation with public key: {public_key}')
-        requests.post(f'{self.server_address}/api/v1/auth/organization', json={'organization': organization, 'username': username, 'name': name, 'email': email, 'public_key': public_key_base64})
+        requests.post(f'{self.server_address}/api/v1/auth/organization', json={'organization': organization, 'username': username, 'name': name, 'email': email, 'public_key': public_key_string})
         self.logger.info(f'Organization {organization} created successfully')
 
     def rep_create_session(self, organization, username, password, credentials_file, session_file):
@@ -94,60 +90,61 @@ class Auth(Command):
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
-        client_ephemeral_public_key_base64 = base64.b64encode(client_ephemeral_public_key).decode("utf-8")
+        client_ephemeral_public_key_string = client_ephemeral_public_key.decode("utf-8")
         
-        associated_data = {'organization': organization, 'username': username, 'client_ephemeral_public_key': client_ephemeral_public_key_base64}
+        associated_data = {'organization': organization, 'username': username, 'client_ephemeral_public_key': client_ephemeral_public_key_string}
         
         # Sign associated data
-        signature = client_private_key.sign(json.dumps(associated_data).encode(), ec.ECDSA(hashes.SHA256()))
-        signature_base64 = base64.b64encode(signature).decode("utf-8")
+        signature = client_private_key.sign(json.dumps(associated_data).encode("utf-8"), ec.ECDSA(hashes.SHA256()))
+        signature_hex = signature.hex()
         
-        response = requests.post(f'{self.server_address}/api/v1/auth/session', json={'associated_data': associated_data, 'signature': signature_base64})
+        response = requests.post(f'{self.server_address}/api/v1/auth/session', json={'associated_data': associated_data, 'signature': signature_hex})
 
-        if response.status_code == 200:
-            
-            # Get associated data
-            associated_data_base64 = response.json()['associated_data']
-            associated_data = json.loads(base64.b64decode(associated_data_base64.encode("utf-8")).decode('utf-8'))
-            signature = response.json()['signature']
-            
-            try:
-                # Verify signature
-                self.server_pub_key.verify(
-                    base64.b64decode(signature.encode("utf-8")),
-                    json.dumps(associated_data).encode(),
-                    ec.ECDSA(hashes.SHA256())
-                )
-
-                # Get server ephemeral public key
-                server_ephemeral_public_key_base64 = associated_data['server_ephemeral_public_key']
-                server_ephemeral_public_key = serialization.load_pem_public_key(base64.b64decode(server_ephemeral_public_key_base64.encode("utf-8")), default_backend())
-                
-                # Calculate shared key
-                shared_key = client_ephemeral_private_key.exchange(ec.ECDH(), server_ephemeral_public_key)
-                
-                derived_key = HKDF(
-                    algorithm=hashes.SHA256(),
-                    length=32,
-                    salt=None,
-                    info=b'handshake data',
-                ).derive(shared_key)
-                derived_key_base64 = base64.b64encode(derived_key).decode("utf-8")
-                
-                # Store session details
-                session_id = associated_data['session_id']
-                
-                with open(session_file, 'w') as f:
-                    f.write(json.dumps({'session_id': session_id, 'organization': organization, 'username': username, 'derived_key': derived_key_base64, 'msg_id': 0}, indent=4))
-                    
-                self.logger.info(f'Session created successfully and stored in file: {session_file}')
-            except InvalidSignature:
-                self.logger.error(f'Failed to verify signature')
-                return
-        else:
+        if response.status_code != 200:
             self.logger.error(f'Failed to create session: {response.status_code}')
             self.logger.error(f'Response: {response.text}')
             return -1
+        
+        # Get associated data
+        associated_data_string = response.json()['associated_data']
+        associated_data = json.loads(associated_data_string)
+        signature_hex = response.json()['signature']
+        
+        try:
+            # Verify signature
+            self.server_pub_key.verify(
+                bytes.fromhex(signature_hex),
+                json.dumps(associated_data).encode("utf-8"),
+                ec.ECDSA(hashes.SHA256())
+            )
+        
+            # Get server ephemeral public key
+            server_ephemeral_public_key_string = associated_data['server_ephemeral_public_key']
+            server_ephemeral_public_key_pem = server_ephemeral_public_key_string.encode("utf-8")
+            server_ephemeral_public_key = serialization.load_pem_public_key(server_ephemeral_public_key_pem, backend=default_backend())
+            
+            # Calculate shared key
+            shared_key = client_ephemeral_private_key.exchange(ec.ECDH(), server_ephemeral_public_key)
+            
+            derived_key = HKDF(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=None,
+                info=b'handshake data',
+            ).derive(shared_key)
+            derived_key_hex = derived_key.hex()
+            
+            # Store session details
+            session_id = associated_data['session_id']
+            
+            with open(session_file, 'w') as f:
+                f.write(json.dumps({'session_id': session_id, 'organization': organization, 'username': username, 'derived_key': derived_key_hex, 'msg_id': 0}, indent=4))
+                
+            self.logger.info(f'Session created successfully and stored in file: {session_file}')
+
+        except InvalidSignature:
+            self.logger.error(f'Failed to verify signature')
+            return
 
 class File(Command):
     
@@ -218,7 +215,8 @@ class Organization(Command):
         command = "get"
         endpoint = '/api/v1/organizations/subjects/state'
         plaintext = {'username': username}
-        return send_session_data(
+
+        result = send_session_data(
             self.logger, 
             self.server_address, 
             command,
@@ -226,6 +224,9 @@ class Organization(Command):
             session_file, 
             plaintext
         )
+        
+        for username, state in result.items():
+            print(f'{username}: {state}')
 
     # ---- Next iteration ----
     def rep_list_role_subjects(self, session_file, role):
@@ -261,8 +262,7 @@ class Organization(Command):
         endpoint = '/api/v1/organizations/documents'
         plaintext = {'creator': creator, 'date_filter': date_filter, 'date': date}
         
-        command = "get"
-        return send_session_data(
+        result = send_session_data(
             self.logger, 
             self.server_address, 
             command,
@@ -270,15 +270,26 @@ class Organization(Command):
             session_file,
             plaintext
         )
+        
+        print(result)
         
     def rep_add_subject(self, session_file, username, name, email, credentials_file):
         """This command adds a new subject to the organization with which I have currently a session. By default the subject is created in the active state. This commands requires a SUBJECT_NEW permission."""
         # POST /api/v1/organizations/subjects
+        
+        pem_data = None
+        with open(credentials_file, 'rb') as f:
+            pem_data = f.read()
+        
+        public_key = serialization.load_pem_public_key(pem_data, backend=default_backend())
+        public_key_pem = public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
+        public_key_string = public_key_pem.decode("utf-8")
+        
         command = 'post'
         endpoint = '/api/v1/organizations/subjects'
-        plaintext = {'username': username, 'name': name, 'email': email, 'credentials_file': credentials_file}
-        
-        return send_session_data(
+        plaintext = {'username': username, 'name': name, 'email': email, 'public_key': public_key_string}
+
+        result = send_session_data(
             self.logger, 
             self.server_address, 
             command,
@@ -287,15 +298,43 @@ class Organization(Command):
             plaintext
         )
         
+        print(result)
+        
     def rep_suspend_subject(self, session_file, username):
         """These commands change the state of a subject in the organization with which I have currently a session. These commands require a SUBJECT_DOWN and SUBJECT_UP permission, respectively."""
-        # PUT /api/v1/organizations/subjects/<string:username>/state
-        return requests.put(f'{self.server_address}/api/v1/organizations/subjects/{username}/state', json={'session': session})
+        # PUT /api/v1/organizations/subjects/state
+        command = 'put'
+        endpoint = f'/api/v1/organizations/subjects/state'
+        plaintext = {'username': username, 'state': 'suspended'}
+
+        result = send_session_data(
+            self.logger,
+            self.server_address,
+            command,
+            endpoint,
+            session_file,
+            plaintext
+        )
+        
+        print(result)
 
     def rep_activate_subject(self, session_file, username):
         """These commands change the state of a subject in the organization with which I have currently a session. These commands require a SUBJECT_DOWN and SUBJECT_UP permission, respectively."""
-        # PUT /api/v1/organizations/subjects/<string:username>/state
-        return requests.put(f'{self.server_address}/api/v1/organizations/subjects/{username}/state', json={'session': session})
+        # PUT /api/v1/organizations/subjects/state
+        command = 'put'
+        endpoint = f'/api/v1/organizations/subjects/state'
+        plaintext = {'username': username, 'state': 'active'}
+        
+        result = send_session_data(
+            self.logger,
+            self.server_address,
+            command,
+            endpoint,
+            session_file,
+            plaintext
+        )
+        
+        print(result)
 
     # ---- Next iteration ----
     def rep_add_role(self, session_file, role):
@@ -338,23 +377,66 @@ class Organization(Command):
     def rep_add_doc(self, session_file, document_name, file):
         """This command adds a document with a given name to the organization with which I have currently a session. The document’s contents is provided as parameter with a file name. This commands requires a DOC_NEW permission."""
         # POST /api/v1/organizations/documents
-        return requests.post(f'{self.server_address}/api/v1/organizations/documents', json={'session': session, 'document_name': document_name, 'file': file})
+        command = 'post'
+        endpoint = '/api/v1/organizations/documents'
+        plaintext = {'document_name': document_name, 'file': file}
+
+        return send_session_data(
+            self.logger, 
+            self.server_address, 
+            command,
+            endpoint,
+            session_file,
+            plaintext
+        )
 
     def rep_get_doc_metadata(self, session_file, document_name):
         """This command fetches the metadata of a document with a given name to the organization with which I have currently a session. The output of this command is useful for getting the clear text contents of a document’s file. This commands requires a DOC_READ permission."""
         # GET /api/v1/organizations/documents/<string:document_name>/metadata
-        return requests.get(f'{self.server_address}/api/v1/organizations/documents/{document_name}/metadata', json={'session': session})
+        command = 'get'
+        endpoint = f'/api/v1/organizations/documents/{document_name}/metadata'
+        plaintext = {'document_name': document_name}
+        
+        return send_session_data(
+            self.logger, 
+            self.server_address, 
+            command,
+            endpoint,
+            session_file,
+            plaintext
+        )
 
     def rep_get_doc_file(self, session_file, document_name, file=None):
         """This command is a combination of rep_get_doc_metadata with rep_get_file and rep_decrypt_file. The file contents are written to stdout or to the file referred in the optional last argument. This commands requires a DOC_READ permission."""
         # GET /api/v1/organizations/documents/<string:document_name>/file
-        return requests.get(f'{self.server_address}/api/v1/organizations/documents/{document_name}/file', json={'session': session})
+        command = 'get'
+        endpoint = f'/api/v1/organizations/documents/{document_name}/file'
+        plaintext = {'document_name': document_name, 'file': file}
 
+        return send_session_data(
+            self.logger,
+            self.server_address,
+            command,
+            endpoint,
+            session_file,
+            plaintext
+        )
+        
     def rep_delete_doc(self, session_file, document_name):
         """This command clears file_handle in the metadata of a document with a given name on the organization with which I have currently a session. The output of this command is the file_handle that ceased to exist in the document’s metadata. This commands requires a DOC_DELETE permission."""
         # DELETE /api/v1/organizations/documents/<string:document_name>
-        return requests.delete(f'{self.server_address}/api/v1/organizations/documents/{document_name}', json={'session': session})
-
+        command = 'delete'
+        endpoint = f'/api/v1/organizations/documents/{document_name}'
+        plaintext = {'document_name': document_name}
+        
+        return send_session_data(
+            self.logger,
+            self.server_address,
+            command,
+            endpoint,
+            session_file,
+            plaintext
+        )
     # ---- Next iteration ----
     def rep_acl_doc(self, session_file, document_name, operation, role, permission):
         """This command changes the ACL of a document by adding (+) or removing (-) a permission for a given role. Use the names previously referred for the permission rights. This commands requires a DOC_ACL permission."""

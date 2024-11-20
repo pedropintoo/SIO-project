@@ -1,5 +1,5 @@
 version: '3.8'
-
+name: delivery1
 services:
   mongo:
     image: mongo:latest
@@ -7,7 +7,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
     volumes:
-      - ./organizations_db/data:/data/db
+      - /home/$USER/.sio/mongodb:/data/db 
     ports:
       - "27017:27017"
 
