@@ -1,0 +1,26 @@
+version: '3.8'
+name: delivery1
+services:
+  mongo:
+    image: mongo:latest
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - /home/$USER/.sio/mongodb:/data/db 
+    ports:
+      - "27017:27017"
+
+  app:
+    build: .
+    depends_on:
+      - mongo
+    env_file:
+      - .env
+    ports:
+      - $REPOSITORY_PORT:$DOCKER_PORT
+    environment:
+      - FLASK_ENV=development
+      - MONGO_URI=mongodb://root:example@mongo:27017/organizations?authSource=admin
+    volumes:
+      - ./server$FILES_LOCATION:$FILES_LOCATION

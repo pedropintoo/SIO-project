@@ -1,0 +1,2 @@
+#!/bin/bash
+python3 ../subject.py -k ../server/rep_pub.pem rep_create_org $@
