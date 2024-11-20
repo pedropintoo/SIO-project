@@ -1,3 +1,4 @@
+import os
 from flask import Flask
 from server.app.auth import auth_bp
 from server.app.file import file_bp
@@ -18,6 +19,7 @@ def create_app():
     app.sessions = {}
     app.organization_db = OrganizationsDB()
     app.EC_CURVE = ec.SECP256R1()
-    app.files_location = 'vault/'
+    app.files_location = os.getenv('FILES_LOCATION')
+    app.MASTER_KEY = os.getenv('MASTER_KEY')
     
     return app

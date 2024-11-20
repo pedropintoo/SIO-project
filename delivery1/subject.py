@@ -19,12 +19,16 @@ if 'REP_PUB_KEY' not in state:
   logger.error("Must set the Repository Public Key")
   sys.exit(-1)
 
+logger.debug('REP_PUB_KEY: ' + state['REP_PUB_KEY'][27:40] + '...')
+logger.debug('REP_ADDRESS: ' + state['REP_ADDRESS'])
 # --------------------------------------------------------------------
 
 ## Execute Command
-CommandsParser.execute(logger, state, args)
+result = CommandsParser.execute(logger, state, args)
 
 ## Save Persistent State
 save(logger, state)
 
 # --------------------------------------------------------------------
+
+sys.exit(result)
