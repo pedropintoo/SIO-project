@@ -501,27 +501,27 @@ def get_document_metadata():
     return jsonify(data), 200
 
 
-@organization_bp.route("/documents/file", methods=['GET'])
-def get_document_file():
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+# @organization_bp.route("/documents/file", methods=['GET'])
+# def get_document_file():
+#     plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-    # Update session msg_id
-    msg_id += 1
-    current_app.sessions[session_id]['msg_id'] = msg_id
+#     # Update session msg_id
+#     msg_id += 1
+#     current_app.sessions[session_id]['msg_id'] = msg_id
 
-    ############################ Logic of the endpoint ############################
-    document_name = plaintext.get("document_name")
+#     ############################ Logic of the endpoint ############################
+#     document_name = plaintext.get("document_name")
 
-    ###############################################################################
+#     ###############################################################################
 
-    data = encapsulate_session_data(
-        new_plaintext,
-        session_id,
-        derived_key_hex,
-        msg_id
-    )
+#     data = encapsulate_session_data(
+#         new_plaintext,
+#         session_id,
+#         derived_key_hex,
+#         msg_id
+#     )
 
-    return jsonify(data), 200
+#     return jsonify(data), 200
 
 @organization_bp.route("/documents/", methods=['DELETE'])
 def delete_document():
