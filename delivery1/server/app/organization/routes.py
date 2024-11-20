@@ -465,7 +465,8 @@ def get_document_metadata():
     
 
     # Filter to include only public properties
-    metadata = {
+    new_plaintext = {
+        "document_handle": document_handle,
         "name": all_metadata.get("name"),
         "create_date": all_metadata.get("create_date"),
         "creator": all_metadata.get("creator"),
@@ -476,7 +477,6 @@ def get_document_metadata():
         "key": key.hex(),
     }
 
-    new_plaintext = {document_handle: metadata}
     ###############################################################################
 
     data = encapsulate_session_data(

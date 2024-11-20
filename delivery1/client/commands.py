@@ -215,6 +215,8 @@ class File(Command):
         else:
             sys.stdout.buffer.write(file_content)
         
+        return file_content
+        
 class Session(Command):
     
     def __init__(self, logger, state):
@@ -482,30 +484,16 @@ class Organization(Command):
     def rep_get_doc_file(self, session_file, document_name, file=None):
         """This command is a combination of rep_get_doc_metadata with rep_get_file and rep_decrypt_file. The file contents are written to stdout or to the file referred in the optional last argument. This commands requires a DOC_READ permission."""
         # GET /api/v1/organizations/documents/file
-        # command = 'get'
-        # endpoint = f'/api/v1/organizations/documents/file'
-        # plaintext = {'document_name': document_name}
-
-        # result = send_session_data(
-        #     self.logger,
-        #     self.server_address,
-        #     command,
-        #     endpoint,
-        #     session_file,
-        #     plaintext
-        # )
-        
-        # if file:
-        #     with open(file, 'wb') as f:
-        #         f.write(result)
-        # else:
-        #     print(result)
-        
+       
         metadata = self.rep_get_doc_metadata(session_file, document_name)
         file_handle = metadata['file_handle'] 
-        encrypted_data = self.rep_get_file(file_handle)
-        key = metadata['key']
+        file_obj = File(self.logger, self.state)
+        encrypted_data = file_obj.rep_get_file(file_handle)
+        key = bytes.fromhex(metadata['key'])
         alg = metadata['alg'] 
+        
+        # clear buffer
+        sys.stdout.flush()
 
         try:
             if alg == 'AES-GCM':
@@ -523,7 +511,7 @@ class Organization(Command):
             return
 
         if file:
-            with open(file, 'w') as f:
+            with open(file, 'wb') as f:
                 f.write(file_content)
         else:
             sys.stdout.buffer.write(file_content)
