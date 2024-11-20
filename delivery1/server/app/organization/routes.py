@@ -7,7 +7,13 @@ from utils.session import encapsulate_session_data, decapsulate_session_data, se
 from cryptography.exceptions import InvalidTag
 import json
 import logging
-
+import datetime
+import base64
+import os
+from bson.objectid import ObjectId
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 @organization_bp.route('/', methods=['GET'])
 def list_orgs():
@@ -334,7 +340,19 @@ def list_documents():
     date_filter = plaintext.get("date_filter")
     date_str = plaintext.get("date_str")
     
-    new_plaintext = current_app.organization_db.list_documents(organization, creator, date_filter, date_str)
+    metadata = current_app.organization_db.list_documents(organization, creator, date_filter, date_str)
+    
+    new_plaintext = {}
+    for obj in metadata:
+        document_handle, document_metadata = next(iter(obj.items()))
+        new_plaintext[document_handle] = {
+            "name": document_metadata.get("name"),
+            "create_date": document_metadata.get("create_date"),
+            "creator": document_metadata.get("creator"),
+            "file_handle": document_metadata.get("file_handle"),
+            "document_acl": document_metadata.get("document_acl"),
+            "deleter": document_metadata.get("deleter")
+        }
     ###############################################################################
 
     data = encapsulate_session_data(
@@ -349,33 +367,190 @@ def list_documents():
 
 @organization_bp.route("/documents", methods=['POST'])
 def create_document():
-    # TODO: Logic to create a document
-    ...
+    plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-@organization_bp.route("/documents/<string:document_name>/metadata", methods=['GET'])
-def get_document_metadata(document_name):
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Logic of the endpoint ############################
+    encryption_file = plaintext.get("encryption_file")
+    current_app.logger.debug(f"document_acl: {plaintext.get('document_acl')}")
+    document_acl = plaintext.get("document_acl")
+    file_handle_hex = plaintext.get("file_handle")
+    name = plaintext.get("name")
+    key_hex = plaintext.get("key")
+    alg = plaintext.get("alg")
+    
+    encryption_file_bytes = base64.b64decode(encryption_file.encode("utf-8"))
+    file_handle_bytes = bytes.fromhex(file_handle_hex)
+    key = bytes.fromhex(key_hex)
+    
+    # TODO: more algorithms??
+    if alg == "AES-GCM":
+        nonce = encryption_file_bytes[:12]
+        data = encryption_file_bytes[12:]
+        original_content = symmetric.decrypt(key, nonce, data, None)
+    else:
+        return jsonify({'error': 'Invalid algorithm'}), 400
+        
+    digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    digest.update(original_content)
+    file_content_digest = digest.finalize()
+    
+    if file_content_digest != file_handle_bytes:
+        return jsonify({'error': 'Invalid file handle'}), 400
+
+    key_salt = os.urandom(16)
+    master_key_kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(), # output is 256 bits -> 32 bytes
+        length=32,
+        salt=key_salt,
+        iterations=480000,
+    ).derive(current_app.MASTER_KEY.encode("utf-8"))
+       
+    key_nonce, encrypted_key = symmetric.encrypt(master_key_kdf, key, None)
+       
+    document_metadata = {
+        'name': name,
+        'create_date': datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
+        'creator': username,
+        "file_handle": file_handle_hex,
+        "document_acl": document_acl,
+        "deleter": None,
+        "alg": alg,
+        "key": encrypted_key.hex(),
+        "key_salt": key_salt.hex(),
+        "key_nonce": key_nonce.hex(),
+    } 
+    
+    document_handle = ObjectId()
+    current_app.organization_db.insert_metadata(organization_name, document_handle, document_metadata)
+
+    with open(f"{current_app.files_location}{file_handle_hex}", "wb") as file:
+        file.write(encryption_file_bytes)
+
+    new_plaintext = { 'state': f'Document "{name}" created in organization "{organization_name}"' }
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        new_plaintext,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+        
+    return jsonify(data), 200
+
+
+@organization_bp.route("/documents/metadata", methods=['GET'])
+def get_document_metadata():
     # TODO: Logic to download metadata of a document
-    ...
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-@organization_bp.route("/documents/<string:document_name>/file", methods=['GET'])
-def get_document_file(document_name):
-    # TODO: Logic to download a document file
-    ...
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
 
-@organization_bp.route("/documents/<string:document_name>", methods=['DELETE'])
-def delete_document(document_name):
-    # TODO: Logic to delete a document
-    session = request.args.get('session')
+    ############################ Logic of the endpoint ############################
+    document_name = plaintext.get("document_name")
+    metadata = current_app.organization_db.get_metadata_by_document_name(organization, document_name)
+    document_handle, all_metadata = next(iter(metadata.items()))
 
-    # Get organization name from session
-    organization_name = current_app.organization_db.get_organization_name(session)
+    stored_key = bytes.fromhex(all_metadata.get("key"))
+    stored_key_salt = bytes.fromhex(all_metadata.get("key_salt"))
+    stored_key_nonce = bytes.fromhex(all_metadata.get("key_nonce"))
+    stored_alg = all_metadata.get("alg")
+    
+    master_key_kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(), # output is 256 bits -> 32 bytes
+        length=32,
+        salt=stored_key_salt,
+        iterations=480000,
+    ).derive(current_app.MASTER_KEY.encode("utf-8"))
+            
+    try:
+        key = symmetric.decrypt(master_key_kdf, stored_key_nonce, stored_key, None) 
+    
+    except InvalidTag:
+        return jsonify({'error': f'Invalid tag'}), 400   
+    
 
-    subject = request.args.get('subject')
+    # Filter to include only public properties
+    new_plaintext = {
+        "document_handle": document_handle,
+        "name": all_metadata.get("name"),
+        "create_date": all_metadata.get("create_date"),
+        "creator": all_metadata.get("creator"),
+        "file_handle": all_metadata.get("file_handle"),
+        "document_acl": all_metadata.get("document_acl"),
+        "deleter": all_metadata.get("deleter"),
+        "alg": stored_alg,
+        "key": key.hex(),
+    }
 
-    current_app.organization_db.delete_metadata(organization_name, document_name, subject)
+    ###############################################################################
 
-    return jsonify({f'Document "{document_name}" deleted from organization "{organization_name}"'}), 200
+    data = encapsulate_session_data(
+        new_plaintext,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
 
+    return jsonify(data), 200
+
+@organization_bp.route("/documents/", methods=['DELETE'])
+def delete_document():
+
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Logic of the endpoint ############################
+    document_name = plaintext.get("document_name")
+    metadata = current_app.organization_db.get_metadata_by_document_name(organization, document_name)
+    document_handle, all_metadata = next(iter(metadata.items()))
+    
+    current_app.organization_db.delete_metadata(organization, document_name, username)
+
+    stored_key = bytes.fromhex(all_metadata.get("key"))
+    stored_key_salt = bytes.fromhex(all_metadata.get("key_salt"))
+    stored_key_nonce = bytes.fromhex(all_metadata.get("key_nonce"))
+    stored_alg = all_metadata.get("alg")
+    
+    master_key_kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(), # output is 256 bits -> 32 bytes
+        length=32,
+        salt=stored_key_salt,
+        iterations=480000,
+    ).derive(current_app.MASTER_KEY.encode("utf-8"))
+            
+    try:
+        key = symmetric.decrypt(master_key_kdf, stored_key_nonce, stored_key, None) 
+    
+    except InvalidTag:
+        return jsonify({'error': f'Invalid tag'}), 400   
+    
+    # Filter to include only public properties
+    new_plaintext = {
+        "file_handle": all_metadata.get("file_handle"),
+        "alg": stored_alg,
+        "key": key.hex(),
+    }
+    
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        new_plaintext,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
 
 @organization_bp.route("/documents/<string:document_name>/acl", methods=['PUT'])
 def update_document_acl(document_name):

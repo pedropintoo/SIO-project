@@ -49,9 +49,31 @@ def create_organization():
     }
     
     current_app.organization_db.insert_organization(organization)
+        
+    password = current_app.MASTER_KEY.encode("utf-8")
+    secret_key = ec.derive_private_key(int.from_bytes(password, 'big'), current_app.EC_CURVE, default_backend())
     
-    return jsonify({'message': "Organization created successfully"}), 200
+    associated_data = {
+        'organization': organization_name,
+        'username': username,
+        'name': name,
+        'email': email,
+        'public_key': public_key
+    }
 
+    associated_data_bytes = json.dumps(associated_data).encode("utf-8")
+    associated_data_string = associated_data_bytes.decode("utf-8")
+        
+    response_signature = secret_key.sign(
+        associated_data_bytes,
+        ec.ECDSA(hashes.SHA256())
+    )
+        
+    return jsonify({
+        'associated_data': associated_data_string,
+        'signature': response_signature.hex()
+    }), 200
+    
 @auth_bp.route('/session', methods=['POST'])
 def create_session():
     data = request.get_json()
