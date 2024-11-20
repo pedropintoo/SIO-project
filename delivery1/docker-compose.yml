@@ -15,8 +15,10 @@ services:
     build: .
     depends_on:
       - mongo
+    env_file:
+      - .env
     ports:
-      - "5000:5000"
+      - $REPOSITORY_PORT:$DOCKER_PORT
     environment:
       - FLASK_ENV=development
       - MONGO_URI=mongodb://root:example@mongo:27017/organizations?authSource=admin

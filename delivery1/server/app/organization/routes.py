@@ -8,8 +8,6 @@ from cryptography.exceptions import InvalidTag
 import json
 import logging
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 @organization_bp.route('/', methods=['GET'])
 def list_orgs():
@@ -281,7 +279,6 @@ def list_all_subjects_state():
         result = current_app.organization_db.retrieve_subjects(organization)
         
         new_plaintext = {}
-        logger.info(result)
         for username, subject_data in result.items():
             new_plaintext[username] = subject_data.get('state')
     ###############################################################################

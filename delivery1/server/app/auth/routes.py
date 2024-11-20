@@ -119,11 +119,11 @@ def create_session():
         associated_data_bytes = json.dumps(associated_data).encode("utf-8")
         associated_data_string = associated_data_bytes.decode("utf-8")
         
-        # TODO: fix this !!!!! store the private key in the app object
-        password = 'jorge'.encode()
-        sk = ec.derive_private_key(int.from_bytes(password, 'big'), current_app.EC_CURVE, default_backend())
         
-        response_signature = sk.sign(
+        password = current_app.MASTER_KEY.encode("utf-8")
+        secret_key = ec.derive_private_key(int.from_bytes(password, 'big'), current_app.EC_CURVE, default_backend())
+        
+        response_signature = secret_key.sign(
             associated_data_bytes,
             ec.ECDSA(hashes.SHA256())
         )

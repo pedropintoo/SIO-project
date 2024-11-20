@@ -45,7 +45,7 @@ class CommandsParser():
         command = args.command
         if not command:
             logger.error("No command provided")
-            sys.exit(-1)
+            return -1
         
         local = Local(logger, state)
         auth = Auth(logger, state)
@@ -96,7 +96,7 @@ class CommandsParser():
             command_func(**filtered_args)
         except Exception as e:
             logger.error(f"Error executing command '{command}': {e}")
-            sys.exit(-1)
+            return -1
         
     ## Local commands
 

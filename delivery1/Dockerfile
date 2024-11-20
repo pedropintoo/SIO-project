@@ -6,4 +6,4 @@ COPY server/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 # Run the Flask app
-CMD ["python3", "app.py"]
+CMD ["python3", "repository.py"]
