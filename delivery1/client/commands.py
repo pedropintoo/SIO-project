@@ -523,7 +523,7 @@ class Organization(Command):
         endpoint = f'/api/v1/organizations/documents/'
         plaintext = {'document_name': document_name}
         
-        return send_session_data(
+        result = send_session_data(
             self.logger,
             self.server_address,
             command,
@@ -531,6 +531,8 @@ class Organization(Command):
             session_file,
             plaintext
         )
+        
+        return result
         
         
     

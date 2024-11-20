@@ -340,7 +340,19 @@ def list_documents():
     date_filter = plaintext.get("date_filter")
     date_str = plaintext.get("date_str")
     
-    new_plaintext = current_app.organization_db.list_documents(organization, creator, date_filter, date_str)
+    metadata = current_app.organization_db.list_documents(organization, creator, date_filter, date_str)
+    
+    new_plaintext = {}
+    for obj in metadata:
+        document_handle, document_metadata = next(iter(obj.items()))
+        new_plaintext[document_handle] = {
+            "name": document_metadata.get("name"),
+            "create_date": document_metadata.get("create_date"),
+            "creator": document_metadata.get("creator"),
+            "file_handle": document_metadata.get("file_handle"),
+            "document_acl": document_metadata.get("document_acl"),
+            "deleter": document_metadata.get("deleter")
+        }
     ###############################################################################
 
     data = encapsulate_session_data(

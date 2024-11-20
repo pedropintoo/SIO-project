@@ -1,70 +1,85 @@
 {
-    "_id": "12312321312312312312321321321321312321321321321",
-    "name": "organization1",
-    "subjects": {
-        "user1": {
-            "name": "User full name",
-            "email": "user email",
-            "public_key": "CADkhdp21y4pg",
-            "state": "active"
-        },
-        "user2": {
-            "name": "Another User",
-            "email": "anotheruser@example.com",
-            "public_key": "XYAjde021dy3nz",
-            "state": "active"
-        },
-        "user43": {
-            "name": "Another of other user",
-            "email": "anotherofotheruser@example.com",
-            "public_key": "ASDASD123132131",
-            "state": "suspended"
-        }
+  "_id": "12312321312312312312321321321321312321321321321",
+  "name": "organization1",
+  "subjects": {
+    "user1": {
+      "name": "User full name",
+      "email": "user email",
+      "public_key": "CADkhdp21y4pg",
+      "state": "active"
     },
-    "roles": {
-        "Managers": {
-          "subjects": ["user1"],
-          "permissions": ["ROLE_NEW", "ROLE_DOWN", "ROLE_UP", "ROLE_MOD", "ROLE_ACL", "SUBJECT_NEW", "SUBJECT_DOWN", "SUBJECT_UP", "DOC_NEW"],
-          "state": "active"
-        },
-        "tios_de_aveiro": {
-          "subjects": ["user1", "user43"],
-          "permissions": ["DOC_NEW"],
-          "state": "suspended"
-        },
-        "losers": {
-          "subjects": ["user1"],
-          "permissions": [],
-          "state": "suspended"
-        }
+    "user2": {
+      "name": "Another User",
+      "email": "anotheruser@example.com",
+      "public_key": "XYAjde021dy3nz",
+      "state": "active"
     },
-    "documents_metadata": {
-        "9f9a89d3-2503-4046-8c40-d368df6c38d1": {
-            "name": "document 1",
-            "create_date": "2021-01-01",
-            "creator": "user1",
-            "file_handle": "bd8c8285-7e43-4023-948f-9ba7c42b531c",
-            "document_acl": {
-                "tios_de_aveiro": ["DOC_ACL", "DOC_READ", "DOC_DELETE"]
-            },
-            "deleter": null,
-            "alg": "AES 256",
-            "key": "AAPDLBDALJOIASDA",
-            "salt": "asdsadadasda",
-            "nonce": "asdasdasdasd"
-        },
-        "98e442c2-57cb-4dca-b903-38f4881c47db": {
-            "name": "document 2",
-            "create_date": "2021-01-01",
-            "creator": "user1",
-            "file_handle": "1978de1a-2b5b-49fa-8c51-43e212f70296",
-            "document_acl": {
-                "tios_de_aveiro": ["DOC_ACL", "DOC_READ"],
-                "losers": ["DOC_DELETE"]   
-            },
-            "deleter": null,
-            "alg": "AES 256",
-            "key": "ASDAR2131232131"
-        }
+    "user43": {
+      "name": "Another of other user",
+      "email": "anotherofotheruser@example.com",
+      "public_key": "ASDASD123132131",
+      "state": "suspended"
     }
+  },
+  "roles": {
+    "Managers": {
+      "subjects": ["user1"],
+      "permissions": [
+        "ROLE_NEW",
+        "ROLE_DOWN",
+        "ROLE_UP",
+        "ROLE_MOD",
+        "ROLE_ACL",
+        "SUBJECT_NEW",
+        "SUBJECT_DOWN",
+        "SUBJECT_UP",
+        "DOC_NEW"
+      ],
+      "state": "active"
+    },
+    "tios_de_aveiro": {
+      "subjects": ["user1", "user43"],
+      "permissions": ["DOC_NEW"],
+      "state": "suspended"
+    },
+    "losers": {
+      "subjects": ["user1"],
+      "permissions": [],
+      "state": "suspended"
+    }
+  },
+  "documents_metadata": {
+    "9f9a89d3-2503-4046-8c40-d368df6c38d1": {
+      "name": "document 1",
+      "create_date": "2021-01-01",
+      "creator": "user1",
+      "file_handle": "bd8c8285-7e43-4023-948f-9ba7c42b531c",
+      "document_acl": {
+        "tios_de_aveiro": ["DOC_ACL", "DOC_READ", "DOC_DELETE"]
+      },
+      "deleter": null,
+      "alg": "AES 256",
+      "key": "AAPDLBDALJOIASDA",
+      "key_salt": "asdsadadasda",
+      "key_nonce": "asdasdasdasd"
+    },
+    "98e442c2-57cb-4dca-b903-38f4881c47db": {
+      "name": "document 2",
+      "create_date": "2021-01-01",
+      "creator": "user1",
+      "file_handle": "1978de1a-2b5b-49fa-8c51-43e212f70296",
+      "document_acl": {
+        "tios_de_aveiro": ["DOC_ACL", "DOC_READ"],
+        "losers": ["DOC_DELETE"]
+      },
+      "deleter": null,
+      "alg": "AES 256",
+      "key": "ASDAR2131232131",
+      "key_salt": "asdsadadasda",
+      "key_nonce": "asdasdasdasd"
+    }
+  }
 }
+
+
+
