@@ -536,6 +536,13 @@ class Organization(Command):
         except Exception as e:
             raise Exception(f'Failed to decrypt file: {e}')
 
+        digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+        digest.update(file_content)
+        file_handle_verify = digest.finalize().hex()
+        
+        if file_handle_verify != file_handle:
+            raise Exception(f'Failed to verify file handle')
+        
         if file:
             with open(file, 'wb') as f:
                 f.write(file_content)
@@ -557,7 +564,7 @@ class Organization(Command):
             session_file,
             plaintext
         )
-        
+        print(result)
         return result
     
     # ---- Next iteration ----

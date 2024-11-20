@@ -159,25 +159,46 @@ class OrganizationsDB:
         doc = result[0]["metadata"][0]
         return {doc["k"]: doc["v"]}
 
-    def delete_metadata(self, organization_name, document_handle, subject):
+    def delete_metadata(self, organization_name, document_name, subject):
         """Soft delete metadata by setting 'deleter' and 'file_handle' to None"""
 
-        # Build the field path to the specific document metadata
-        document_metadata_field = f"documents_metadata.{document_handle}"
-
-        result = self.collection.update_one(
+        print("organization_name", organization_name)
+        pipeline = [
+            {"$match": {"name": organization_name}},  # Match the organization
             {
-                "name": organization_name,
-                f"{document_metadata_field}": {"$exists": True}
-            },
+                "$project": {
+                    "metadata": {
+                        "$filter": {
+                            "input": {"$objectToArray": "$documents_metadata"},  # Convert documents_metadata to an array
+                            "as": "doc",
+                            "cond": {"$eq": ["$$doc.v.name", document_name]}  # Match the document name
+                        }
+                    }
+                }
+            }
+        ]
+
+        result = list(self.collection.aggregate(pipeline))
+
+        if not result or not result[0]["metadata"]:
+            return False  # Organization or document not found
+
+        # Extract the document handle
+        document_handle = result[0]["metadata"][0]["k"]
+
+        # Perform the soft delete by updating the document
+        update_result = self.collection.update_one(
+            {"name": organization_name},  # Match the organization
             {
                 "$set": {
-                    f"{document_metadata_field}.deleter": subject,
-                    f"{document_metadata_field}.file_handle": None
+                    f"documents_metadata.{document_handle}.deleter": subject,
+                    f"documents_metadata.{document_handle}.file_handle": None,
                 }
             }
         )
-        return result.modified_count
+
+        # Return True if the update modified a document, otherwise False
+        return update_result.modified_count > 0
 
     def update_acl(self, organization_name, document_name, new_acl):
          

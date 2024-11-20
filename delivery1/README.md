@@ -44,7 +44,12 @@ Because for this delivery we didn't implement role based sessions, the following
 Each communication to the server using any of the endpoints requires a session
 
 - The client creates a `plaintext` with the relevant information that he wants to send;
-- 
+- The client loads the `session file` and updates it's `msg_id` to prevent **replay attacks**;
+- Then encapsulates the session data by grouping the `msg_id` and the `session_id` in the `associated_data` and encrypting the `plaintext` and the `associated_data` with the `derived_key` to a `encryption_data`;
+- Then it sends the `encryption_data` and the `associated_data` to the endpoint;
+- The server decapsulates the data by getting the `session_id` and the `msg_id` from the `associated_data` and the `enctrypted_data`;
+- It get the session by the `session_id` in the sessions and checks the current `msg_id` for **replay attacks**;
+- Then gets the session details like the organization, username and the derived key and validate the **integrity**
 
 ### Authenticated API
 
@@ -57,7 +62,17 @@ The command `rep_list_docs` lists documents from the organisation associated wit
 ### Authorized API
 
 #### Add subject
-The rep_add_subject function adds a new subject to the organisation associated with the current session. By default, the subject is created in an active state and requires the SUBJECT_NEW permission. The function reads a public key from a credentials file, converts it to a PEM-encoded string, and sends a POST request with the subject's details (username, name, email, and public key) to the /api/v1/organizations/subjects endpoint. On the server side, the endpoint validates the session, increments the session's message ID, and stores the subject details in the organisation database.
+The command `rep_add_subject` function adds a new subject to the organisation associated with the current session. By default, the subject is created in an active state. The function reads a public key from a credentials file, converts it to a PEM-encoded string, and sends a POST request with the subject's details (username, name, email, and public key) to the `/api/v1/organizations/subjects` endpoint. On the server side, the endpoint validates the session, increments the session's message ID, and stores the subject details in the organisation database.
+
+#### Suspend and Activate subject
+The commands `rep_suspend_subject` and `rep_activate_subject` change the status of a subject in the organization with which I have currently a session.
+
+#### Add Document
+The command `rep_add_doc` securely adds a document to the organisation associated with the current session. The client reads the document file, computes a unique file handle using a SHA-256 digest, and encrypts the file content with AES-GCM using a randomly generated 256-bit key. The encrypted file, its metadata (file handle, encryption key, algorithm, and access control list), and the document name are sent to the server. On the server, the session is validated, the document's integrity is verified using the file handle, and the encryption key is securely re-encrypted using a derived master key. The server stores the document metadata in the database, writes the encrypted file to disk, and responds with a success message encapsulated in the session context.
+
+#### Get Document Metadata
+
+
 
 
 

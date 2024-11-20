@@ -511,11 +511,36 @@ def delete_document():
 
     ############################ Logic of the endpoint ############################
     document_name = plaintext.get("document_name")
-    current_app.organization_db.delete_metadata(organization, document_name, username)
+    metadata = current_app.organization_db.get_metadata_by_document_name(organization, document_name)
+    document_handle, all_metadata = next(iter(metadata.items()))
     
+    current_app.organization_db.delete_metadata(organization, document_name, username)
+
+    stored_key = bytes.fromhex(all_metadata.get("key"))
+    stored_key_salt = bytes.fromhex(all_metadata.get("key_salt"))
+    stored_key_nonce = bytes.fromhex(all_metadata.get("key_nonce"))
+    stored_alg = all_metadata.get("alg")
+    
+    master_key_kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(), # output is 256 bits -> 32 bytes
+        length=32,
+        salt=stored_key_salt,
+        iterations=480000,
+    ).derive(current_app.MASTER_KEY.encode("utf-8"))
+            
+    try:
+        key = symmetric.decrypt(master_key_kdf, stored_key_nonce, stored_key, None) 
+    
+    except InvalidTag:
+        return jsonify({'error': f'Invalid tag'}), 400   
+    
+    # Filter to include only public properties
     new_plaintext = {
-        'state': f'Document "{document_name}" deleted from organization "{organization}"'
+        "file_handle": all_metadata.get("file_handle"),
+        "alg": stored_alg,
+        "key": key.hex(),
     }
+    
     ###############################################################################
 
     data = encapsulate_session_data(
