@@ -133,6 +133,32 @@ class OrganizationsDB:
         )
         return result
 
+    def get_metadata_by_document_name(self, organization_name, document_name):
+        # Use an aggregation pipeline to find the document with the given name
+        pipeline = [
+            {"$match": {"name": organization_name}},  # Match the organization
+            {
+                "$project": {
+                    "metadata": {
+                        "$filter": {
+                            "input": {"$objectToArray": "$documents_metadata"},  # Convert documents_metadata to an array
+                            "as": "doc",
+                            "cond": {"$eq": ["$$doc.v.name", document_name]}  # Match the document name
+                        }
+                    }
+                }
+            }
+        ]
+
+        result = list(self.collection.aggregate(pipeline))
+
+        if not result or not result[0]["metadata"]:
+            return None  # Organization or document not found
+
+        # Return the document_handle along with its metadata
+        doc = result[0]["metadata"][0]
+        return {doc["k"]: doc["v"]}
+
     def delete_metadata(self, organization_name, document_handle, subject):
         """Soft delete metadata by setting 'deleter' and 'file_handle' to None"""
 
@@ -227,3 +253,4 @@ class OrganizationsDB:
             documents_list.append({doc_id: doc_meta})
 
         return documents_list
+

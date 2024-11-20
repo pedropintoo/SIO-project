@@ -49,7 +49,8 @@
             },
             "deleter": null,
             "alg": "AES 256",
-            "key": "AAPDLBDALJOIASDA"
+            "key": "AAPDLBDALJOIASDA",
+            "salt": "asdsadadasda"
         },
         "98e442c2-57cb-4dca-b903-38f4881c47db": {
             "name": "document 2",

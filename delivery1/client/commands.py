@@ -6,9 +6,10 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
 from cryptography.exceptions import InvalidSignature
-import hashlib
 import json
+import base64
 from flask import jsonify
+import os
 
 from utils import symmetric
 from utils.session import encapsulate_session_data, decapsulate_session_data, session_info_from_file, send_session_data
@@ -49,12 +50,26 @@ class Local(Command):
         self.logger.debug(f'Public key stored in credentials file: {credentials_file}')
     
     def rep_decrypt_file(self, encrypted_file, encryption_metadata):
-        self.logger.debug(f"Encryption metadata: {encryption_metadata}")
-        algorithm = self.state[encryption_metadata]['algorithm']
-        key = self.state[encryption_metadata]['key']
-        # TODO: ...
         
-
+        with open(encryption_metadata, 'r') as f:
+            metadata = json.load(f)
+        
+        key = bytes.fromhex(metadata['key'])
+        alg = metadata['alg']
+        
+        with open(encrypted_file, 'rb') as f:
+            encrypted_data = f.read()
+        
+        if alg == 'AES-GCM':
+            nonce = encrypted_data[:16]
+            ciphertext = encrypted_data[16:]
+            decrypted_data = symmetric.decrypt(key, nonce, ciphertext, None)
+        else:
+            self.logger.error(f'Unsupported encryption algorithm: {alg}')
+            return
+        
+        print(decrypted_data)
+        
 class Auth(Command):
     
     def __init__(self, logger, state):
@@ -153,21 +168,39 @@ class File(Command):
         
     def rep_get_file(self, file_handle, file=None):
         """This command downloads a file given its handle. The file contents are written to stdout or to the file referred in the optional last argument."""
-        # GET /api/v1/files/<string:file_handle>
-        response = requests.get(f'{self.server_address}/api/v1/files/{file_handle}')  
+        # GET /api/v1/files/
         
-        if response.status_code == 200:
-            json_response = response.json()
-            file_content = json_response['file']
-            if file:
-                with open(file, 'wb') as f:
-                    f.write(file_content.encode())
-            else:
-                print(file_content)
-                    
-        else:
-            self.logger.error(f'Failed to get file: {response.status_code}')
-            raise Exception(f'Failed to get file: {response.status_code}')
+        response = requests.post(f'{self.server_address}/api/v1/files/', json={'file_handle': file_handle})
+
+        if response.status_code != 200:
+            self.logger.error(f'Failed to create session: {response.status_code}')
+            self.logger.error(f'Response: {response.text}')
+            return -1
+        
+        # Get associated data
+        associated_data = response.json()['associated_data']
+        file_handle_received = associated_data['file_handle']
+        file_content_string = associated_data['file_content']
+        signature_hex = response.json()['signature']
+        
+        # Prevent man-in-the-middle attacks
+        if file_handle_received != file_handle:
+            self.logger.error(f'File handle mismatch')
+            return
+        
+        file_content = base64.b64decode(file_content_string.encode("utf-8"))
+        
+        try:
+            # Verify signature
+            self.server_pub_key.verify(
+                bytes.fromhex(signature_hex),
+                json.dumps(associated_data).encode("utf-8"),
+                ec.ECDSA(hashes.SHA256())
+            )
+            
+        except InvalidSignature:
+            self.logger.error(f'Failed to verify signature')
+            return
 
 class Session(Command):
     
@@ -377,11 +410,30 @@ class Organization(Command):
     def rep_add_doc(self, session_file, document_name, file):
         """This command adds a document with a given name to the organization with which I have currently a session. The document’s contents is provided as parameter with a file name. This commands requires a DOC_NEW permission."""
         # POST /api/v1/organizations/documents
+        with open(file, 'rb') as f:
+            file_content = f.read()
+        
+        digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+        digest.update(file_content)
+        file_handle_hex = digest.finalize().hex()
+        
+        key = os.urandom(32)
+        alg = 'AES-GCM'
+        nonce, ciphertext = symmetric.encrypt(key, file_content, None)
+        encrypted_file = base64.b64encode(nonce + ciphertext).decode("utf-8")
+        
         command = 'post'
         endpoint = '/api/v1/organizations/documents'
-        plaintext = {'document_name': document_name, 'file': file}
-
-        return send_session_data(
+        plaintext = {
+            'encryption_file': encrypted_file,
+            'document_acl': {}, # TODO: check this
+            'file_handle': file_handle_hex,
+            'name': document_name,
+            'key': key.hex(),
+            'alg': alg
+        }
+        
+        result = send_session_data(
             self.logger, 
             self.server_address, 
             command,
@@ -389,15 +441,17 @@ class Organization(Command):
             session_file,
             plaintext
         )
+        
+        print(result)
 
     def rep_get_doc_metadata(self, session_file, document_name):
         """This command fetches the metadata of a document with a given name to the organization with which I have currently a session. The output of this command is useful for getting the clear text contents of a document’s file. This commands requires a DOC_READ permission."""
-        # GET /api/v1/organizations/documents/<string:document_name>/metadata
+        # GET /api/v1/organizations/documents/metadata
         command = 'get'
-        endpoint = f'/api/v1/organizations/documents/{document_name}/metadata'
+        endpoint = f'/api/v1/organizations/documents/metadata'
         plaintext = {'document_name': document_name}
         
-        return send_session_data(
+        result = send_session_data(
             self.logger, 
             self.server_address, 
             command,
@@ -406,14 +460,17 @@ class Organization(Command):
             plaintext
         )
 
+        print(result)
+
+
     def rep_get_doc_file(self, session_file, document_name, file=None):
         """This command is a combination of rep_get_doc_metadata with rep_get_file and rep_decrypt_file. The file contents are written to stdout or to the file referred in the optional last argument. This commands requires a DOC_READ permission."""
-        # GET /api/v1/organizations/documents/<string:document_name>/file
+        # GET /api/v1/organizations/documents/file
         command = 'get'
         endpoint = f'/api/v1/organizations/documents/{document_name}/file'
-        plaintext = {'document_name': document_name, 'file': file}
+        plaintext = {'document_name': document_name}
 
-        return send_session_data(
+        result = send_session_data(
             self.logger,
             self.server_address,
             command,
@@ -422,11 +479,17 @@ class Organization(Command):
             plaintext
         )
         
+        if file:
+            with open(file, 'wb') as f:
+                f.write(result)
+        else:
+            print(result)
+        
     def rep_delete_doc(self, session_file, document_name):
         """This command clears file_handle in the metadata of a document with a given name on the organization with which I have currently a session. The output of this command is the file_handle that ceased to exist in the document’s metadata. This commands requires a DOC_DELETE permission."""
-        # DELETE /api/v1/organizations/documents/<string:document_name>
+        # DELETE /api/v1/organizations/documents/
         command = 'delete'
-        endpoint = f'/api/v1/organizations/documents/{document_name}'
+        endpoint = f'/api/v1/organizations/documents/'
         plaintext = {'document_name': document_name}
         
         return send_session_data(
@@ -437,6 +500,7 @@ class Organization(Command):
             session_file,
             plaintext
         )
+    
     # ---- Next iteration ----
     def rep_acl_doc(self, session_file, document_name, operation, role, permission):
         """This command changes the ACL of a document by adding (+) or removing (-) a permission for a given role. Use the names previously referred for the permission rights. This commands requires a DOC_ACL permission."""

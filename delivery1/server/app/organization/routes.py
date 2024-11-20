@@ -7,7 +7,13 @@ from utils.session import encapsulate_session_data, decapsulate_session_data, se
 from cryptography.exceptions import InvalidTag
 import json
 import logging
-
+import datetime
+import base64
+import os
+from bson.objectid import ObjectId
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 @organization_bp.route('/', methods=['GET'])
 def list_orgs():
@@ -349,33 +355,161 @@ def list_documents():
 
 @organization_bp.route("/documents", methods=['POST'])
 def create_document():
-    # TODO: Logic to create a document
-    ...
+    plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-@organization_bp.route("/documents/<string:document_name>/metadata", methods=['GET'])
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Logic of the endpoint ############################
+    encryption_file = plaintext.get("encryption_file")
+    current_app.logger.debug(f"document_acl: {plaintext.get('document_acl')}")
+    document_acl = plaintext.get("document_acl")
+    file_handle_hex = plaintext.get("file_handle")
+    name = plaintext.get("name")
+    key_hex = plaintext.get("key")
+    alg = plaintext.get("alg")
+    
+    encryption_file_bytes = base64.b64decode(encryption_file.encode("utf-8"))
+    file_handle_bytes = bytes.fromhex(file_handle_hex)
+    key = bytes.fromhex(key_hex)
+    
+    # TODO: more algorithms??
+    if alg == "AES-GCM":
+        nonce = encryption_file_bytes[:12]
+        data = encryption_file_bytes[12:]
+        original_content = symmetric.decrypt(key, nonce, data, None)
+    else:
+        return jsonify({'error': 'Invalid algorithm'}), 400
+        
+    digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    digest.update(original_content)
+    file_content_digest = digest.finalize()
+    
+    if file_content_digest != file_handle_bytes:
+        return jsonify({'error': 'Invalid file handle'}), 400
+
+    salt = os.urandom(16)
+    master_key_kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(), # output is 256 bits -> 32 bytes
+        length=32,
+        salt=salt,
+        iterations=480000,
+    ).derive(current_app.MASTER_KEY.encode("utf-8"))
+       
+    document_metadata = {
+        'name': name,
+        'create_date': datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
+        'creator': username,
+        "file_handle": file_handle_hex,
+        "document_acl": document_acl,
+        "deleter": None,
+        "alg": alg,
+        "key": master_key_kdf.hex(),
+        "salt": salt.hex(),
+    } 
+    
+    document_handle = ObjectId()
+    current_app.organization_db.insert_metadata(organization_name, document_handle, document_metadata)
+
+    new_plaintext = { 'state': f'Document "{name}" created in organization "{organization_name}"' }
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        new_plaintext,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+        
+    return jsonify(data), 200
+
+
+@organization_bp.route("/documents/metadata", methods=['GET'])
 def get_document_metadata(document_name):
     # TODO: Logic to download metadata of a document
-    ...
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-@organization_bp.route("/documents/<string:document_name>/file", methods=['GET'])
-def get_document_file(document_name):
-    # TODO: Logic to download a document file
-    ...
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
 
-@organization_bp.route("/documents/<string:document_name>", methods=['DELETE'])
-def delete_document(document_name):
-    # TODO: Logic to delete a document
-    session = request.args.get('session')
+    ############################ Logic of the endpoint ############################
+    document_name = plaintext.get("document_name")
+    metadata = current_app.organization_db.get_metadata_by_document_name(organization, document_name)
+    document_handle, all_metadata = next(iter(metadata.items()))
 
-    # Get organization name from session
-    organization_name = current_app.organization_db.get_organization_name(session)
+    # Filter to include only public properties
+    public_metadata = {
+        "name": all_metadata.get("name"),
+        "create_date": all_metadata.get("create_date"),
+        "creator": all_metadata.get("creator"),
+        "file_handle": all_metadata.get("file_handle"),
+        "document_acl": all_metadata.get("document_acl"),
+        "deleter": all_metadata.get("deleter")
+    }
 
-    subject = request.args.get('subject')
+    new_plaintext = {document_handle: public_metadata}
+    
+    ###############################################################################
 
-    current_app.organization_db.delete_metadata(organization_name, document_name, subject)
+    data = encapsulate_session_data(
+        new_plaintext,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
 
-    return jsonify({f'Document "{document_name}" deleted from organization "{organization_name}"'}), 200
+    return jsonify(data), 200
 
+
+@organization_bp.route("/documents/file", methods=['GET'])
+def get_document_file():
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Logic of the endpoint ############################
+
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        new_plaintext,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
+
+@organization_bp.route("/documents/", methods=['DELETE'])
+def delete_document():
+
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Logic of the endpoint ############################
+    document_name = plaintext.get("document_name")
+    current_app.organization_db.delete_metadata(organization, document_name, username)
+    
+    new_plaintext = {
+        'state': f'Document "{document_name}" deleted from organization "{organization}"'
+    }
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        new_plaintext,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
 
 @organization_bp.route("/documents/<string:document_name>/acl", methods=['PUT'])
 def update_document_acl(document_name):
