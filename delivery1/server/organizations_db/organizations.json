@@ -50,7 +50,8 @@
             "deleter": null,
             "alg": "AES 256",
             "key": "AAPDLBDALJOIASDA",
-            "salt": "asdsadadasda"
+            "salt": "asdsadadasda",
+            "nonce": "asdasdasdasd"
         },
         "98e442c2-57cb-4dca-b903-38f4881c47db": {
             "name": "document 2",

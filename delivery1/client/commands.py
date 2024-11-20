@@ -5,12 +5,12 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
-from cryptography.exceptions import InvalidSignature
+from cryptography.exceptions import InvalidSignature, InvalidTag
 import json
 import base64
 from flask import jsonify
 import os
-
+import sys
 from utils import symmetric
 from utils.session import encapsulate_session_data, decapsulate_session_data, session_info_from_file, send_session_data
 
@@ -50,7 +50,6 @@ class Local(Command):
         self.logger.debug(f'Public key stored in credentials file: {credentials_file}')
     
     def rep_decrypt_file(self, encrypted_file, encryption_metadata):
-        
         with open(encryption_metadata, 'r') as f:
             metadata = json.load(f)
         
@@ -59,16 +58,23 @@ class Local(Command):
         
         with open(encrypted_file, 'rb') as f:
             encrypted_data = f.read()
-        
-        if alg == 'AES-GCM':
-            nonce = encrypted_data[:16]
-            ciphertext = encrypted_data[16:]
-            decrypted_data = symmetric.decrypt(key, nonce, ciphertext, None)
-        else:
-            self.logger.error(f'Unsupported encryption algorithm: {alg}')
+        self.logger.debug(f'{len(encrypted_data)} bytes read from file: {encrypted_data}')
+        try:
+            if alg == 'AES-GCM':
+                nonce = encrypted_data[:12]
+                ciphertext = encrypted_data[12:]
+                decrypted_data = symmetric.decrypt(key, nonce, ciphertext, None)
+            else:
+                self.logger.debug(f'Unsupported encryption algorithm: {alg}')
+                return
+        except InvalidTag:
+            self.logger.error(f'Failed to decrypt file: Invalid tag')
+            return
+        except Exception as e:
+            self.logger.error(f'Failed to decrypt file: {e}')
             return
         
-        print(decrypted_data)
+        sys.stdout.buffer.write(decrypted_data)
         
 class Auth(Command):
     
@@ -170,7 +176,7 @@ class File(Command):
         """This command downloads a file given its handle. The file contents are written to stdout or to the file referred in the optional last argument."""
         # GET /api/v1/files/
         
-        response = requests.post(f'{self.server_address}/api/v1/files/', json={'file_handle': file_handle})
+        response = requests.get(f'{self.server_address}/api/v1/files/', json={'file_handle': file_handle})
 
         if response.status_code != 200:
             self.logger.error(f'Failed to create session: {response.status_code}')
@@ -178,7 +184,8 @@ class File(Command):
             return -1
         
         # Get associated data
-        associated_data = response.json()['associated_data']
+        associated_data_string = response.json()['associated_data']
+        associated_data = json.loads(associated_data_string)
         file_handle_received = associated_data['file_handle']
         file_content_string = associated_data['file_content']
         signature_hex = response.json()['signature']
@@ -188,8 +195,8 @@ class File(Command):
             self.logger.error(f'File handle mismatch')
             return
         
-        file_content = base64.b64decode(file_content_string.encode("utf-8"))
-        
+        file_content = base64.b64decode(file_content_string)
+
         try:
             # Verify signature
             self.server_pub_key.verify(
@@ -201,7 +208,13 @@ class File(Command):
         except InvalidSignature:
             self.logger.error(f'Failed to verify signature')
             return
-
+        
+        if file:
+            with open(file, 'wb') as f:
+                f.write(file_content)
+        else:
+            sys.stdout.buffer.write(file_content)
+        
 class Session(Command):
     
     def __init__(self, logger, state):
@@ -462,28 +475,58 @@ class Organization(Command):
 
         print(result)
 
+        return result
+        
+
 
     def rep_get_doc_file(self, session_file, document_name, file=None):
         """This command is a combination of rep_get_doc_metadata with rep_get_file and rep_decrypt_file. The file contents are written to stdout or to the file referred in the optional last argument. This commands requires a DOC_READ permission."""
         # GET /api/v1/organizations/documents/file
-        command = 'get'
-        endpoint = f'/api/v1/organizations/documents/{document_name}/file'
-        plaintext = {'document_name': document_name}
+        # command = 'get'
+        # endpoint = f'/api/v1/organizations/documents/file'
+        # plaintext = {'document_name': document_name}
 
-        result = send_session_data(
-            self.logger,
-            self.server_address,
-            command,
-            endpoint,
-            session_file,
-            plaintext
-        )
+        # result = send_session_data(
+        #     self.logger,
+        #     self.server_address,
+        #     command,
+        #     endpoint,
+        #     session_file,
+        #     plaintext
+        # )
         
+        # if file:
+        #     with open(file, 'wb') as f:
+        #         f.write(result)
+        # else:
+        #     print(result)
+        
+        metadata = self.rep_get_doc_metadata(session_file, document_name)
+        file_handle = metadata['file_handle'] 
+        encrypted_data = self.rep_get_file(file_handle)
+        key = metadata['key']
+        alg = metadata['alg'] 
+
+        try:
+            if alg == 'AES-GCM':
+                nonce = encrypted_data[:12]
+                ciphertext = encrypted_data[12:]
+                file_content = symmetric.decrypt(key, nonce, ciphertext, None)
+            else:
+                self.logger.debug(f'Unsupported encryption algorithm: {alg}')
+                return
+        except InvalidTag:
+            self.logger.error(f'Failed to decrypt file: Invalid tag')
+            return
+        except Exception as e:
+            self.logger.error(f'Failed to decrypt file: {e}')
+            return
+
         if file:
-            with open(file, 'wb') as f:
-                f.write(result)
+            with open(file, 'w') as f:
+                f.write(file_content)
         else:
-            print(result)
+            sys.stdout.buffer.write(file_content)
         
     def rep_delete_doc(self, session_file, document_name):
         """This command clears file_handle in the metadata of a document with a given name on the organization with which I have currently a session. The output of this command is the file_handle that ceased to exist in the document’s metadata. This commands requires a DOC_DELETE permission."""
@@ -500,6 +543,8 @@ class Organization(Command):
             session_file,
             plaintext
         )
+        
+        
     
     # ---- Next iteration ----
     def rep_acl_doc(self, session_file, document_name, operation, role, permission):
