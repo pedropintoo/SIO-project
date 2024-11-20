@@ -5,7 +5,7 @@ from client.parser import CommandsParser
 
 logging.basicConfig(format='%(levelname)s\t- %(message)s')
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO) # change to DEBUG for verbose logging
 
 state = load_state(logger)
 state = parse_env(logger, state)

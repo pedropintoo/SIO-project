@@ -197,6 +197,8 @@ class Auth(Command):
         except Exception as e:
             raise Exception(f'Failed to create session: {e}')
         
+        print(associated_data)
+        
 class File(Command):
     
     def ___init__(self, logger, state):
@@ -281,7 +283,8 @@ class Organization(Command):
             raise Exception(f'[response.status_code] Failed to list organizations. Response: {response.text}')
         
         organizations = response.json()
-        print(organizations)
+        for org in organizations:
+            print(org["name"])
 
     def rep_list_subjects(self, session_file, username=None):
         """This command lists the subjects of the organization with which I have currently a session. The listing should show the state of all the subjects (active or suspended). This command accepts an extra command to show only one subject."""
@@ -510,7 +513,6 @@ class Organization(Command):
 
     def rep_get_doc_file(self, session_file, document_name, file=None):
         """This command is a combination of rep_get_doc_metadata with rep_get_file and rep_decrypt_file. The file contents are written to stdout or to the file referred in the optional last argument. This commands requires a DOC_READ permission."""
-        # GET /api/v1/organizations/documents/file
        
         metadata = self.rep_get_doc_metadata(session_file, document_name)
         file_handle = metadata['file_handle'] 

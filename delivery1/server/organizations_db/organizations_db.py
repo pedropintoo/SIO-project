@@ -14,7 +14,7 @@ class OrganizationsDB:
         self.collection = self.db.data
 
         # drop the collection
-        # self.collection.drop()
+        self.collection.drop()
  
  
     def get_organization_name(self, session_id):
