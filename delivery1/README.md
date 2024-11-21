@@ -22,7 +22,13 @@ docker compose up --build
 
 Client:
 ```bash
-python3 repository.py <command> <args>
+python3 subject.py <command> <args>
+```
+
+Tests:
+```bash
+cd commands
+./test_features_1
 ```
 
 
@@ -74,12 +80,12 @@ Each communication to the server using any of the endpoints requires a session
 - The client loads the `session file` and updates it's `msg_id` to prevent **replay attacks**;
 - Then encapsulates the session data by grouping the `msg_id` and the `session_id` in the `associated_data` and encrypting the `plaintext` and the `associated_data` with the `derived_key` to a `encryption_data`;
 - Then it sends the `encryption_data` and the `associated_data` to the endpoint;
-- Then encapsulates the session data by grouping the `msg_id` and the `session_id` in the `associated_data` and encrypting the `plaintext` and the `associated_data` with the `derived_key` to a `encryption_data` using **AESGCM**;
+- Then encapsulates the session data by grouping the `msg_id` and the `session_id` in the `associated_data` and encrypting the `plaintext` and the `associated_data` with the `derived_key` to a `encryption_data` using **AESGCM** to also add **integrity** to the message;
 - It get the session by the `session_id` in the sessions and checks the current `msg_id` for **replay attacks**;
 - Then gets the session details like the organization, username and the derived key and decrypts resulting in the plain_text sended by the user;
 - Then it updates the `msg_id`, make all the operations needed and build up a new encapsulated data and the message take the inverse path to the user;
 - Finally, the user decapsulates/decrypts the message received from the server. 
-
+\
 ### Authenticated API
 
 #### List Subjects
