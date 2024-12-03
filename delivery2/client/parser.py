@@ -176,6 +176,7 @@ class CommandsParser():
         Usage:
             rep_assume_role <session_file> <role>
         """
+        ## debug
         subparser = self.parser.add_parser('rep_assume_role', help='This command requests the given role for the session.')
         subparser.add_argument('session_file', help='Path to the session file')
         subparser.add_argument('role', help='Role to assume')

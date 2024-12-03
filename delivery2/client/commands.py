@@ -4,7 +4,7 @@ import base64
 import os
 import sys
 from utils import symmetric
-from utils.session import send_session_data
+from utils.session import send_session_data, encapsulate_session_data, decapsulate_session_data, session_info_from_file
 from views.roles import DocumentPermissions
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.backends import default_backend
@@ -254,19 +254,59 @@ class Session(Command):
     def rep_assume_role(self, session_file, role):
         """This command requests the given role for the session"""
         # POST /api/v1/sessions/roles
-        return requests.post(f'{self.server_address}/api/v1/sessions/roles', json={'session': session_file, 'role': role})
+        # requests.post(f'{self.server_address}/api/v1/sessions/roles', json={'session': session, 'role': role})
+        
+        with open(session_file, 'rb') as f:
+            session = f.read()
+            session_id = session['session_id']
+            organization = session['organization']
+            username = session['username']
+            derived_key = session['derived_key']
+            msg_id = session['msg_id']
+        
+        data = encapsulate_session_data(
+            {'role': role}, # not sure if this is correct
+            session_id,
+            derived_key,
+            msg_id
+        )
+
+        command = 'post'
+        endpoint = '/api/v1/sessions/roles'
+        
+        result = send_session_data(
+            self.logger, 
+            self.server_address, 
+            command,
+            endpoint, 
+            session_file, 
+            data # not sure if this is correct
+        )
+
+        # Desacpsulate data
+        plaintext, _, _, msg_id, _, _ = decapsulate_session_data(result, {session_id: {"msg_id": msg_id, "organization": organization, "derived_key": derived_key, "username": username}}) # not sure if this is correct
+
+        # Update session file if successful (if not error 403)
+        if result.status_code != 403:
+            with open(session_file, 'w') as f:
+                session['msg_id'] = msg_id
+                session['role'] = role
+                json.dump(session, f, indent=4)
+
+        print(plaintext)
+
 
     # ---- Next iteration ---- 
     def rep_drop_role(self, session_file, role):
         """This command releases the given role for the session"""
         # DELETE /api/v1/sessions/roles
-        return requests.delete(f'{self.server_address}/api/v1/sessions/roles', json={'session': session_file, 'role': role})
+        # requests.delete(f'{self.server_address}/api/v1/sessions/roles', json={'session': session, 'role': role})
     
     # ---- Next iteration ---- 
     def rep_list_roles(self, session_file):
         """Lists the current session roles."""
         # GET /api/v1/sessions/roles
-        return requests.get(f'{self.server_address}/api/v1/sessions/roles', json={'session': session_file})
+        # requests.get(f'{self.server_address}/api/v1/sessions/roles', json={'session': session})
     
     
 class Organization(Command):
@@ -379,6 +419,56 @@ class Organization(Command):
         )
         
         print(result)
+
+    def rep_add_subject(self, session_file, username, name, email, credentials_file):
+        """This command adds a new subject to the organization with which I have currently a session. By default the subject is created in the active state. This commands requires a SUBJECT_NEW permission."""
+        # POST /api/v1/organizations/subjects
+
+        pem_data = None
+        with open(credentials_file, 'rb') as f:
+            pem_data = f.read()
+        
+        public_key = serialization.load_pem_public_key(pem_data, backend=default_backend())
+        public_key_pem = public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
+        public_key_string = public_key_pem.decode("utf-8") # where is this used?
+
+        with open(session_file, 'rb') as f:
+            session = f.read()
+            session_id = session['session_id']
+            organization = session['organization']
+            username = session['username']
+            derived_key = session['derived_key']
+            msg_id = session['msg_id']
+            role = session['role']
+
+        # not sure if this is correct
+        data = encapsulate_session_data(
+            {'username': username, 'name': name, 'email': email, 'public_key': public_key_string},
+            derived_key,
+            msg_id
+        )
+
+        command = 'post'
+        endpoint = '/api/v1/organizations/subjects'
+
+        result = send_session_data(
+            self.logger,
+            self.server_address,
+            command,
+            endpoint,
+            session_file,
+            data
+        )
+
+        # Desacpsulate data
+        plaintext, _, _, msg_id, _, _ = decapsulate_session_data(result, {session_id: {"msg_id": msg_id, "organization": organization, "derived_key": derived_key, "username": username}})
+
+        # Update session file if successful (if not error 403)
+        if result.status_code != 403:
+            with open(session_file, 'w') as f:
+                session['msg_id'] = msg_id
+                json.dump(session, f, indent=4)
+
         
     def rep_suspend_subject(self, session_file, username):
         """These commands change the state of a subject in the organization with which I have currently a session. These commands require a SUBJECT_DOWN and SUBJECT_UP permission, respectively."""
