@@ -332,13 +332,15 @@ class Organization(Command):
         # GET /api/v1/organizations/permissions/<string:permission>/roles
         return requests.get(f'{self.server_address}/api/v1/organizations/permissions/{permission}/roles', json={'session': session})
 
-    def rep_list_docs(self, session_file, creator=None, date_filter=None, date=None):
+    def rep_list_docs(self, session_file, username=None, date=None):
         """This command lists the documents of the organization with which I have currently a session, possibly filtered by a subject that created them and by a date (newer than, older than, equal to), expressed in the DD-MM-YYYY format."""
         # GET /api/v1/organizations/documents
         
         command = 'get'
         endpoint = '/api/v1/organizations/documents'
-        plaintext = {'creator': creator, 'date_filter': date_filter, 'date': date}
+        date_filter = date[0] if date else None
+        date = date[1] if date else None
+        plaintext = {'creator': username, 'date_filter': date_filter, 'date_str': date}
         
         result = send_session_data(
             self.logger, 

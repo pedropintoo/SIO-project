@@ -260,14 +260,14 @@ class OrganizationsDB:
                 if not doc_date_str:
                     continue
                 try:
-                    doc_date = datetime.strptime(doc_date_str, '%Y-%m-%d')
+                    doc_date = datetime.strptime(doc_date_str, '%d-%m-%Y %H:%M:%S')
                 except ValueError:
                     continue  # Skip if create_date format is invalid
-                if date_filter == 'newer than' and not (doc_date > filter_date):
+                if date_filter == 'nt' and not (doc_date > filter_date):
                     continue
-                elif date_filter == 'older than' and not (doc_date < filter_date):
+                elif date_filter == 'ot' and not (doc_date < filter_date):
                     continue
-                elif date_filter == 'equal to' and not (doc_date == filter_date):
+                elif date_filter == 'et' and not (doc_date.date() == filter_date.date()):
                     continue
 
             # Add the document to the list if it passes all filters
