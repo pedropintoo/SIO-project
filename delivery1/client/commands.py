@@ -254,19 +254,19 @@ class Session(Command):
     def rep_assume_role(self, session_file, role):
         """This command requests the given role for the session"""
         # POST /api/v1/sessions/roles
-        return requests.post(f'{self.server_address}/api/v1/sessions/roles', json={'session': session_file, 'role': role})
+        return requests.post(f'{self.server_address}/api/v1/sessions/roles', json={'session': session, 'role': role})
 
     # ---- Next iteration ---- 
     def rep_drop_role(self, session_file, role):
         """This command releases the given role for the session"""
         # DELETE /api/v1/sessions/roles
-        return requests.delete(f'{self.server_address}/api/v1/sessions/roles', json={'session': session_file, 'role': role})
+        return requests.delete(f'{self.server_address}/api/v1/sessions/roles', json={'session': session, 'role': role})
     
     # ---- Next iteration ---- 
     def rep_list_roles(self, session_file):
         """Lists the current session roles."""
         # GET /api/v1/sessions/roles
-        return requests.get(f'{self.server_address}/api/v1/sessions/roles', json={'session': session_file})
+        return requests.get(f'{self.server_address}/api/v1/sessions/roles', json={'session': session})
     
     
 class Organization(Command):
