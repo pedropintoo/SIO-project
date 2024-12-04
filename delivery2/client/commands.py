@@ -392,7 +392,7 @@ class Organization(Command):
         # return requests.get(f'{self.server_address}/api/v1/organizations/roles/{role}/subjects', json={'session': session})
 
         command = 'get'
-        endpoint = f'/api/v1/organizations/roles/{role}/subjects'
+        endpoint = f'/api/v1/organizations/roles/subjects'
         plaintext = {"role": role}
 
         result = send_session_data(

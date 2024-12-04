@@ -20,7 +20,7 @@ def list_orgs():
     return jsonify(current_app.organization_db.get_all_organizations()), 200
     
 # Roles Endpoints
-@organization_bp.route('/roles/<string:role>/subjects', methods=['GET'])
+@organization_bp.route('/roles/subjects', methods=['GET'])
 def list_role_subjects():
     # This command lists the subjects of a role of the organization with which I have currently a session.
     plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
@@ -37,8 +37,6 @@ def list_role_subjects():
     response = {
         "role_subjects": role_subjects
     }
-
-    current_app.logger.debug(f"Role subjects: {role_subjects}")
 
     ###############################################################################
 
