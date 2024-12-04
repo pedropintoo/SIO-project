@@ -293,7 +293,38 @@ class Session(Command):
         """This command releases the given role for the session"""
         # DELETE /api/v1/sessions/roles
         # requests.delete(f'{self.server_address}/api/v1/sessions/roles', json={'session': session, 'role': role})
-    
+
+        command = 'delete'
+        endpoint = '/api/v1/sessions/roles'
+        plaintext = {'role': role}
+
+        result = send_session_data(
+            self.logger, 
+            self.server_address, 
+            command,
+            endpoint, 
+            session_file, 
+            plaintext
+        )
+
+        print(result)
+
+        # Read the existing JSON data
+        with open(session_file, 'r') as f:
+            data = json.load(f)
+
+        # Update the JSON data
+        if "role" in data:
+            if role in data["role"]:
+                if isinstance(data["role"], list):
+                    data["role"].remove(role)
+                else:
+                    data["role"] = None
+
+        # Write the updated data back to the file
+        with open(session_file, 'w') as f:
+            json.dump(data, f, indent=4)
+
     # ---- Next iteration ---- 
     def rep_list_roles(self, session_file):
         """Lists the current session roles."""
