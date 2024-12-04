@@ -3,7 +3,7 @@ from . import organization_bp
 from flask import jsonify, request, current_app
 from server.organizations_db.organizations_db import OrganizationsDB
 from utils import symmetric
-from utils.session import encapsulate_session_data, decapsulate_session_data, session_info_from_file
+from utils.session import encapsulate_session_data, decapsulate_session_data, session_info_from_file, check_user_permission_in_session
 from cryptography.exceptions import InvalidTag
 import json
 import logging
@@ -165,6 +165,12 @@ def add_subject():
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
 
+    ############################ Authorization asdad ############################
+    permission_in_session = check_user_permission_in_session("SUBJECT_NEW", current_app.sessions[session_id], current_app.organization_db)
+
+    if permission_in_session == False:
+        return jsonify({'error': 'User does not have permission to add a subject'}), 403
+    
     ############################ Logic of the endpoint ############################
     plaintext_username = plaintext.get("username")
     plaintext_email = plaintext.get("email")
