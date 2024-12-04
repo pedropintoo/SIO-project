@@ -103,6 +103,7 @@ def add_role():
     }
 
     current_app.organization_db.add_role(organization_name, plaintext_role, role_details)
+
     response = {
         'state': f'Role "{plaintext_role}" added to organization "{organization_name}" successfully'
     }
@@ -168,31 +169,42 @@ def action_permission_to_role(role):
     return jsonify({f'Permission "{data.get("permission")}" {action}ed to role "{role}" in organization "{organization_name}"'}), 200
 
 
-@organization_bp.route('/roles/<string:role>/state', methods=['PUT'])
-def update_role_state(role):
-    # TODO: Logic to change role state
-    session = request.args.get('session')
+@organization_bp.route('/roles/suspend', methods=['PUT'])
+def suspend_role():
+    # Suspends a role in the organization with which I have currently a session. This command requires a ROLE_DOWN permission.
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-    # Get organization name from session
-    organization_name = current_app.organization_db.get_organization_name(session)
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
 
-    role_data = current_app.organization_db.retrieve_role(organization_name, role)
+    ############################ Authorization ############################
+    permission_in_session = check_user_permission_in_session( "ROLE_DOWN", current_app.sessions[session_id], current_app.organization_db)
 
-    if not role_data:
-        return jsonify({'error': f'Role "{role}" not found in organization "{organization_name}"'}), 404
-
-    data = request.get_json()
-    new_state = data.get('state')
+    if permission_in_session == False:
+        return jsonify({'error': 'User does not have a "ROLE_DOWN" permission to suspend a role'}), 403
     
-    if new_state == 'active':
-        role_data['state'] = 'active'
-    elif new_state == 'suspend':
-        role_data['state'] = 'suspend'
+    ############################ Logic of the endpoint ############################
+    plaintext_role = plaintext.get("role")
 
-    current_app.organization_db.update_role(organization_name, role, role_data)
+    role_data = current_app.organization_db.suspend_role(organization, plaintext_role)
 
-    return jsonify({f'Role "{role}" state updated to "{role_data["state"]}" in organization "{organization_name}"'}), 200
-    
+    response = {
+        'state': f'Role "{plaintext_role}" suspended in organization "{organization}"'
+    }
+
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        response,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
+
+
 # Subjects Endpoints
 @organization_bp.route("/subjects", methods=['POST'])
 def add_subject():

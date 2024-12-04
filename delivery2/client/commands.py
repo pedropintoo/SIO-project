@@ -585,9 +585,24 @@ class Organization(Command):
 
     # ---- Next iteration ----
     def rep_suspend_role(self, session_file, role):
-        """These commands change the state of a role in the organization with which I have currently a session. These commands require a ROLE_DOWN and ROLE_UP permission, respectively."""
-        # PUT /api/v1/organizations/roles/<string:role>/state
-        return requests.put(f'{self.server_address}/api/v1/organizations/roles/{role}/state', json={'session': session})
+        """This command suspends a role in the organization with which I have currently a session. This command requires a ROLE_DOWN permission."""
+        # PUT /api/v1/organizations/roles/suspend
+        # return requests.put(f'{self.server_address}/api/v1/organizations/roles/{role}/state', json={'session': session})
+
+        command = 'put'
+        endpoint = f'/api/v1/organizations/roles/suspend'
+        plaintext = {'role': role}
+
+        result = send_session_data(
+            self.logger,
+            self.server_address,
+            command,
+            endpoint,
+            session_file,
+            plaintext
+        )
+
+        print(result)
 
     # ---- Next iteration ----
     def rep_reactivate_role(self, session_file, role):
