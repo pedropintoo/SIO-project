@@ -17,7 +17,7 @@ def assume_session_role():
     plaintext_role = plaintext.get('role')
 
     # Check in the database if the username has that role in that organization
-    has_role = current_app.organization_db.check_user_role(current_app.logger, organization_name, username, plaintext_role)
+    has_role = current_app.organization_db.check_user_role(organization_name, username, plaintext_role)
 
     current_app.logger.info(f'User {username} has role {plaintext_role} in organization {organization_name}: {has_role}')
 

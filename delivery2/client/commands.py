@@ -275,12 +275,18 @@ class Session(Command):
             data = json.load(f)
         
         # Update the JSON data
-        data["role"] = role
-        
+        if "role" not in data:
+            data["role"] = role
+        else:
+            if role not in data["role"]:
+                if isinstance(data["role"], list):
+                    data["role"].append(role)
+                else:
+                    data["role"] = [data["role"], role]
+
         # Write the updated data back to the file
         with open(session_file, 'w') as f:
             json.dump(data, f, indent=4)
-
 
     # ---- Next iteration ---- 
     def rep_drop_role(self, session_file, role):

@@ -167,7 +167,7 @@ def add_subject():
 
     ############################ Authorization ############################
     # Add logger to the function
-    permission_in_session = check_user_permission_in_session( current_app.logger ,"SUBJECT_NEW", current_app.sessions[session_id], current_app.organization_db)
+    permission_in_session = check_user_permission_in_session( "SUBJECT_NEW", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
         return jsonify({'error': 'User does not have permission to add a subject'}), 403

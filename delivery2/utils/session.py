@@ -142,7 +142,7 @@ def send_session_data(logger, server_address, command, endpoint, session_file, p
 
     return plaintext
 
-def check_user_permission_in_session(logger, permission, session, organization_db):
+def check_user_permission_in_session(permission, session, organization_db):
     # Check if the user has the role, in this session, to add a subject. 
     # For instance, the user must have the SUBJECT_NEW permission in the role to add a subject.
     
@@ -153,7 +153,7 @@ def check_user_permission_in_session(logger, permission, session, organization_d
     if roles is None:
         return False
 
-    return organization_db.check_role_permission(logger, session['organization'], roles, permission)
+    return organization_db.check_role_permission(session['organization'], roles, permission)
     
     
     
