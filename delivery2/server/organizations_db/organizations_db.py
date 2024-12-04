@@ -209,6 +209,14 @@ class OrganizationsDB:
             {"$set": {f"roles.{role_name}.state": "suspended"}}
         )
         return result.modified_count
+    
+    def reactivate_role(self, organization_name, role_name):
+        result = self.collection.update_one(
+            {"name": organization_name},
+            {"$set": {f"roles.{role_name}.state": "active"}}
+        )
+        return result.modified_count
+    
 
     ### Organization Management ###
     def in_database(self, organization_name):

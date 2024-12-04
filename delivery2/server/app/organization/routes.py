@@ -204,6 +204,41 @@ def suspend_role():
 
     return jsonify(data), 200
 
+@organization_bp.route('/roles/reactivate', methods=['PUT'])
+def reactivate_role():
+    # Reactivate a role in the organization with which I have currently a session. This command requires a ROLE_UP permission.
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Authorization ############################
+    permission_in_session = check_user_permission_in_session( "ROLE_UP", current_app.sessions[session_id], current_app.organization_db)
+
+    if permission_in_session == False:
+        return jsonify({'error': 'User does not have a "ROLE_UP" permission to reactivate a role'}), 403
+    
+    ############################ Logic of the endpoint ############################
+    plaintext_role = plaintext.get("role")
+
+    role_data = current_app.organization_db.reactivate_role(organization, plaintext_role)
+
+    response = {
+        'state': f'Role "{plaintext_role}" reactivate in organization "{organization}"'
+    }
+
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        response,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
+
 
 # Subjects Endpoints
 @organization_bp.route("/subjects", methods=['POST'])
