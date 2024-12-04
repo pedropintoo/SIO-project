@@ -81,7 +81,32 @@ def drop_session_role():
 @session_bp.route('/roles', methods=['GET'])
 def list_session_roles():
     # TODO: Logic to list session roles
-    ...
+    plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Logic of the endpoint ############################
+    roles = current_app.sessions[session_id].get('role')
+
+    current_app.logger.info(f'Roles in session: {current_app.sessions[session_id]["role"]}')
+
+    response = {
+        'roles': roles
+    }
+
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        response,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
+
 
 # @session_bp.route('/roles', methods=['DELETE'])
 # def refresh_session_keys():

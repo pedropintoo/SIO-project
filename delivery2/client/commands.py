@@ -330,7 +330,23 @@ class Session(Command):
         """Lists the current session roles."""
         # GET /api/v1/sessions/roles
         # requests.get(f'{self.server_address}/api/v1/sessions/roles', json={'session': session})
-    
+
+        command = 'get'
+        endpoint = '/api/v1/sessions/roles'
+        plaintext = {} # not sure because teacher has "rep_list_roles <session file> <role>"
+
+        result = send_session_data(
+            self.logger, 
+            self.server_address, 
+            command,
+            endpoint, 
+            session_file, 
+            plaintext
+        )
+
+        print(result)
+
+        
     
 class Organization(Command):
     
