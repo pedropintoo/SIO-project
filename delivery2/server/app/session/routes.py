@@ -28,7 +28,6 @@ def assume_session_role():
             'state': f'Role "{plaintext_role}" assumed successfully'
         }
 
-        current_app.logger.info(f'Role in session: {current_app.sessions[session_id]["role"]}')
 
     ###############################################################################
 
@@ -63,8 +62,6 @@ def drop_session_role():
         response = {
             'state': f'Role "{plaintext_role}" dropped successfully'
         }
-
-        current_app.logger.info(f'Role in session: {current_app.sessions[session_id]["role"]}')
 
     ###############################################################################
 

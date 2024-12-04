@@ -98,6 +98,24 @@ class OrganizationsDB:
         result = result.get('roles', {}).get(role_name, {}).get('subjects', [])
         return result
 
+    def retrieve_subject_roles(self, logger, organization_name, username):
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"roles": 1}
+        )
+        
+        if not result:
+            return []
+
+        all_roles = result.get('roles', {})
+
+        subject_roles = []
+        for role_name, role_data in all_roles.items():
+            if username in role_data.get('subjects', []):
+                subject_roles.append(role_name)
+            
+        return subject_roles
+
 
     def update_role(self, organization_name, role_name, role_data):
         result = self.collection.update_one(

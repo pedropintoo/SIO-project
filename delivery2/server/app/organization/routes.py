@@ -22,7 +22,7 @@ def list_orgs():
 # Roles Endpoints
 @organization_bp.route('/roles/subjects', methods=['GET'])
 def list_role_subjects():
-    # This command lists the subjects of a role of the organization with which I have currently a session.
+    # Subjects of a role of the organization with which I have currently a session.
     plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
     # Update session msg_id
@@ -36,6 +36,35 @@ def list_role_subjects():
 
     response = {
         "role_subjects": role_subjects
+    }
+
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        response,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
+
+@organization_bp.route('/subjects/roles', methods=['GET'])
+def list_subject_roles():
+    # Roles of a subject of the organization with which I have currently a session.
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Logic of the endpoint ############################
+    plaintext_username = plaintext.get("username")
+
+    subject_roles = current_app.organization_db.retrieve_subject_roles(current_app.logger, organization, plaintext_username)
+
+    response = {
+        "subject_roles": subject_roles
     }
 
     ###############################################################################
