@@ -393,32 +393,32 @@ class Organization(Command):
         
         print(result)
         
-    def rep_add_subject(self, session_file, username, name, email, credentials_file):
-        """This command adds a new subject to the organization with which I have currently a session. By default the subject is created in the active state. This commands requires a SUBJECT_NEW permission."""
-        # POST /api/v1/organizations/subjects
+    # def rep_add_subject(self, session_file, username, name, email, credentials_file):
+    #     """This command adds a new subject to the organization with which I have currently a session. By default the subject is created in the active state. This commands requires a SUBJECT_NEW permission."""
+    #     # POST /api/v1/organizations/subjects
         
-        pem_data = None
-        with open(credentials_file, 'rb') as f:
-            pem_data = f.read()
+    #     pem_data = None
+    #     with open(credentials_file, 'rb') as f:
+    #         pem_data = f.read()
         
-        public_key = serialization.load_pem_public_key(pem_data, backend=default_backend())
-        public_key_pem = public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
-        public_key_string = public_key_pem.decode("utf-8")
+    #     public_key = serialization.load_pem_public_key(pem_data, backend=default_backend())
+    #     public_key_pem = public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
+    #     public_key_string = public_key_pem.decode("utf-8")
         
-        command = 'post'
-        endpoint = '/api/v1/organizations/subjects'
-        plaintext = {'username': username, 'name': name, 'email': email, 'public_key': public_key_string}
+    #     command = 'post'
+    #     endpoint = '/api/v1/organizations/subjects'
+    #     plaintext = {'username': username, 'name': name, 'email': email, 'public_key': public_key_string}
 
-        result = send_session_data(
-            self.logger, 
-            self.server_address, 
-            command,
-            endpoint,
-            session_file,
-            plaintext
-        )
+    #     result = send_session_data(
+    #         self.logger, 
+    #         self.server_address, 
+    #         command,
+    #         endpoint,
+    #         session_file,
+    #         plaintext
+    #     )
         
-        print(result)
+    #     print(result)
 
     def rep_add_subject(self, session_file, username, name, email, credentials_file):
         """This command adds a new subject to the organization with which I have currently a session. By default the subject is created in the active state. This commands requires a SUBJECT_NEW permission."""
