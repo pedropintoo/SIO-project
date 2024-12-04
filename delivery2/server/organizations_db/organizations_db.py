@@ -97,6 +97,17 @@ class OrganizationsDB:
         )
         return result.modified_count
 
+    def check_user_role(self, organization_name, username, role_name):
+        organization = self.collection.find_one({"name": organization_name})
+        if not organization:
+            return False
+        
+        role = organization.get('roles', {}).get(role_name)
+        if not role:
+            return False
+
+        return username in role.get('subjects', [])
+
     ### Organization Management ###
     def in_database(self, organization_name):
         return self.collection.find_one({"name": organization_name}) is not None
