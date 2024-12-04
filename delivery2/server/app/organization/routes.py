@@ -168,7 +168,6 @@ def action_permission_to_role(role):
 
     return jsonify({f'Permission "{data.get("permission")}" {action}ed to role "{role}" in organization "{organization_name}"'}), 200
 
-
 @organization_bp.route('/roles/suspend', methods=['PUT'])
 def suspend_role():
     # Suspends a role in the organization with which I have currently a session. This command requires a ROLE_DOWN permission.
@@ -239,6 +238,42 @@ def reactivate_role():
 
     return jsonify(data), 200
 
+@organization_bp.route('/roles/permissions', methods=['POST'])
+def add_permission():
+    # Add a permission to the organization with which I have currently a session. This command requires a ROLE_MOD permission.
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Authorization ############################
+    permission_in_session = check_user_permission_in_session( "ROLE_MOD", current_app.sessions[session_id], current_app.organization_db)
+
+    if permission_in_session == False:
+        return jsonify({'error': 'User does not have a "ROLE_MOD" permission to add a permission'}), 403
+    
+    ############################ Logic of the endpoint ############################
+    plaintext_role = plaintext.get("role")
+    plaintext_permission = plaintext.get("permission")
+
+    current_app.organization_db.add_permission(organization, plaintext_role, plaintext_permission)
+
+    response = {
+        'state': f'Permission "{plaintext_permission}" added to role "{plaintext_role}" in organization "{organization}"'
+    }
+
+    ###############################################################################
+    
+    data = encapsulate_session_data(
+        response,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
+    
 
 # Subjects Endpoints
 @organization_bp.route("/subjects", methods=['POST'])

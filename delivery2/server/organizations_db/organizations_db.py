@@ -217,6 +217,13 @@ class OrganizationsDB:
         )
         return result.modified_count
     
+    def add_permission(self, organization_name, role_name, permission):
+        result = self.collection.update_one(
+            {"name": organization_name},
+            {"$push": {f"roles.{role_name}.permissions": permission}}
+        )
+        return result.modified_count
+    
 
     ### Organization Management ###
     def in_database(self, organization_name):
