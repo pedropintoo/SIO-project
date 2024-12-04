@@ -165,7 +165,7 @@ def add_subject():
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
 
-    ############################ Authorization asdad ############################
+    ############################ Authorization ############################
     permission_in_session = check_user_permission_in_session("SUBJECT_NEW", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
