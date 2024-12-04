@@ -457,8 +457,25 @@ class Organization(Command):
     # ---- Next iteration ----
     def rep_list_permission_roles(self, session_file, permission):
         """This command lists the roles of the organization with which I have currently a session that have a given permission. Use the names previously referred for the permission rights."""
-        # GET /api/v1/organizations/permissions/<string:permission>/roles
-        return requests.get(f'{self.server_address}/api/v1/organizations/permissions/{permission}/roles', json={'session': session})
+        # GET /api/v1/organizations/permissions/roles
+        # return requests.get(f'{self.server_address}/api/v1/organizations/permissions/{permission}/roles', json={'session': session})
+
+        command = 'get'
+        endpoint = f'/api/v1/organizations/permissions/roles'
+        plaintext = {"permission": permission}
+
+        result = send_session_data(
+            self.logger,
+            self.server_address,
+            command,
+            endpoint,
+            session_file,
+            plaintext
+        )
+
+        for role, state in result.items():
+            print(f'{role}: {state}')
+
 
     def rep_list_docs(self, session_file, username=None, date=None):
         """This command lists the documents of the organization with which I have currently a session, possibly filtered by a subject that created them and by a date (newer than, older than, equal to), expressed in the DD-MM-YYYY format."""
@@ -548,7 +565,23 @@ class Organization(Command):
     def rep_add_role(self, session_file, role):
         """This command adds a role to the organization with which I have currently a session. This commands requires a ROLE_NEW permission."""
         # POST /api/v1/organizations/roles
-        return requests.post(f'{self.server_address}/api/v1/organizations/roles', json={'session': session, 'role': role})
+        # return requests.post(f'{self.server_address}/api/v1/organizations/roles', json={'session': session, 'role': role})
+
+        command = 'post'
+        endpoint = '/api/v1/organizations/roles'
+        plaintext = {'role': role}
+
+        result = send_session_data(
+            self.logger,
+            self.server_address,
+            command,
+            endpoint,
+            session_file,
+            plaintext
+        )
+
+        print(result)
+
 
     # ---- Next iteration ----
     def rep_suspend_role(self, session_file, role):

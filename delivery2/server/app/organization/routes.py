@@ -49,35 +49,6 @@ def list_role_subjects():
 
     return jsonify(data), 200
 
-@organization_bp.route('/subjects/roles', methods=['GET'])
-def list_subject_roles():
-    # Roles of a subject of the organization with which I have currently a session.
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
-    # Update session msg_id
-    msg_id += 1
-    current_app.sessions[session_id]['msg_id'] = msg_id
-
-    ############################ Logic of the endpoint ############################
-    plaintext_username = plaintext.get("username")
-
-    subject_roles = current_app.organization_db.retrieve_subject_roles(organization, plaintext_username)
-
-    response = {
-        "subject_roles": subject_roles
-    }
-
-    ###############################################################################
-
-    data = encapsulate_session_data(
-        response,
-        session_id,
-        derived_key_hex,
-        msg_id
-    )
-
-    return jsonify(data), 200
-
 @organization_bp.route('/roles/permissions', methods=['GET'])
 def list_role_permissions():
     # Permissions of a role of the organization with which I have currently a session.
@@ -107,24 +78,44 @@ def list_role_permissions():
 
     return jsonify(data), 200
 
-
 @organization_bp.route('/roles', methods=['POST'])
-def add_role(role, subjects, permissions, state):
+def add_role():
     # TODO: Logic to add a role
-    session = request.args.get('session')
+    plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-    # Get organization name from session
-    organization_name = current_app.organization_db.get_organization_name(session)
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Authorization ############################
+    permission_in_session = check_user_permission_in_session( "ROLE_NEW", current_app.sessions[session_id], current_app.organization_db)
+
+    if permission_in_session == False:
+        return jsonify({'error': 'User does not have a "ROLE_NEW" permission to add a role'}), 403
+    
+    ############################ Logic of the endpoint ############################
+    plaintext_role = plaintext.get("role")
 
     role_details = {
-        'subjects': subjects,
-        'permissions': permissions,
-        'state': state
+        'state': 'active', # not sure if it should be active or suspended
+        'subjects': [],
+        'permissions': []
     }
 
-    current_app.organization_db.add_role(organization_name, role, role_details)
+    current_app.organization_db.add_role(organization_name, plaintext_role, role_details)
+    response = {
+        'state': f'Role "{plaintext_role}" added to organization "{organization_name}" successfully'
+    }
+    ###############################################################################
 
-    return jsonify({f'Role "{role}" added to organization "{organization_name}"'}), 200
+    data = encapsulate_session_data(
+        response,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
 
 @organization_bp.route('/roles/<string:role>/subjects', methods=['POST'])
 def action_subject_to_role(role):
@@ -150,7 +141,6 @@ def action_subject_to_role(role):
     current_app.organization_db.update_role(organization_name, role, role_data)
 
     return jsonify({f'Subject "{data.get("subject")}" {action}ed to role "{role}" in organization "{organization_name}"'}), 200
-
 
 @organization_bp.route('/roles/<string:role>/permissions', methods=['POST'])
 def action_permission_to_role(role):
@@ -213,11 +203,10 @@ def add_subject():
     current_app.sessions[session_id]['msg_id'] = msg_id
 
     ############################ Authorization ############################
-    # Add logger to the function
     permission_in_session = check_user_permission_in_session( "SUBJECT_NEW", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
-        return jsonify({'error': 'User does not have permission to add a subject'}), 403
+        return jsonify({'error': 'User does not have a "SUBJECT_NEW" permission to add a subject'}), 403
     
     ############################ Logic of the endpoint ############################
     plaintext_username = plaintext.get("username")
@@ -246,22 +235,34 @@ def add_subject():
 
     return jsonify(data), 200
 
-@organization_bp.route('/subjects/<string:username>/roles', methods=['GET'])
-def list_roles_subject(username):
-    # TODO: Logic to get roles of one of my organization's subjects
-    session = request.args.get('session')
+@organization_bp.route('/subjects/roles', methods=['GET'])
+def list_subject_roles():
+    # Roles of a subject of the organization with which I have currently a session.
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-    # Get organization name from session
-    organization_name = current_app.organization_db.get_organization_name(session)
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
 
-    roles = current_app.organization_db.retrieve_roles(organization_name)
+    ############################ Logic of the endpoint ############################
+    plaintext_username = plaintext.get("username")
 
-    subject_roles = []
-    for role, role_data in roles.items():
-        if username in role_data.get('subjects', []):
-            subject_roles.append(role)
+    subject_roles = current_app.organization_db.retrieve_subject_roles(organization, plaintext_username)
 
-    return jsonify(subject_roles), 200       
+    response = {
+        "subject_roles": subject_roles
+    }
+
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        response,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
 
 @organization_bp.route('/subjects/state', methods=['PUT'])
 def update_subject_state():
@@ -351,33 +352,36 @@ def list_all_subjects_state():
         
     return jsonify(data), 200
 
-
 # Permissions Endpoints
-@organization_bp.route('/permissions/<string:permission>/roles', methods=['GET'])
-def list_roles_permission(permission):
-    # TODO: Logic to get roles that have a given permission
-    session = request.args.get('session')
+@organization_bp.route('/permissions/roles', methods=['GET'])
+def list_permission_roles():
+    # Roles of the organization with which I have currently a session that have a given permission.
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-    # Get organization name from session
-    organization_name = current_app.organization_db.get_organization_name(session)
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
 
-    roles = current_app.organization_db.retrieve_roles(organization_name)
-    documents_metadata = current_app.organization_db.get_metadata(organization_name)
+    ############################ Logic of the endpoint ############################
+    plaintext_permission = plaintext.get("permission")
 
-    permission_roles = []
-    
-    for role, role_data in roles.items():
-        if permission in role_data.get('permissions', []):
-            permission_roles.append(role)
+    permission_roles = current_app.organization_db.retrieve_permission_roles(current_app.logger, organization, plaintext_permission)
 
-    
-    for document_name, document_metadata in documents_metadata.items():
-        for role, acl in document_metadata.get('document_acl', {}).items():
-            if permission in acl:
-                permission_roles.append(role)
+    response = {
+        "permission_roles": permission_roles
+    }
 
-    return jsonify(permission_roles), 200
-    
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        response,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
+
 # Documents Endpoints
 @organization_bp.route("/documents", methods=['GET'])
 def list_documents():
