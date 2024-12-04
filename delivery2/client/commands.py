@@ -434,8 +434,25 @@ class Organization(Command):
     # ---- Next iteration ----
     def rep_list_role_permissions(self, session_file, role):
         """This command lists the permissions of a role of the organization with which I have currently a session."""
-        # GET /api/v1/organizations/roles/<string:role>/permissions
-        return requests.get(f'{self.server_address}/api/v1/organizations/roles/{role}/permissions', json={'session': session})
+        # GET /api/v1/organizations/roles/permissions
+        # return requests.get(f'{self.server_address}/api/v1/organizations/roles/{role}/permissions', json={'session': session})
+
+        command = 'get'
+        endpoint = f'/api/v1/organizations/roles/permissions'
+        plaintext = {"role": role}
+
+        result = send_session_data(
+            self.logger,
+            self.server_address,
+            command,
+            endpoint,
+            session_file,
+            plaintext
+        )
+
+        for permission, state in result.items():
+            print(f'{permission}: {state}')
+
 
     # ---- Next iteration ----
     def rep_list_permission_roles(self, session_file, permission):

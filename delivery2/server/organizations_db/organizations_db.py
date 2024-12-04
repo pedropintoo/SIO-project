@@ -98,7 +98,7 @@ class OrganizationsDB:
         result = result.get('roles', {}).get(role_name, {}).get('subjects', [])
         return result
 
-    def retrieve_subject_roles(self, logger, organization_name, username):
+    def retrieve_subject_roles(self, organization_name, username):
         result = self.collection.find_one(
             {"name": organization_name},
             {"roles": 1}
@@ -115,6 +115,14 @@ class OrganizationsDB:
                 subject_roles.append(role_name)
             
         return subject_roles
+    
+    def retrieve_role_permissions(self, organization_name, role_name):
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"roles": {role_name: 1}}
+        )
+        result = result.get('roles', {}).get(role_name, {}).get('permissions', [])
+        return result
 
 
     def update_role(self, organization_name, role_name, role_data):
@@ -152,6 +160,7 @@ class OrganizationsDB:
         
         return False
 
+    
 
     ### Organization Management ###
     def in_database(self, organization_name):

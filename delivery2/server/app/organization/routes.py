@@ -61,7 +61,7 @@ def list_subject_roles():
     ############################ Logic of the endpoint ############################
     plaintext_username = plaintext.get("username")
 
-    subject_roles = current_app.organization_db.retrieve_subject_roles(current_app.logger, organization, plaintext_username)
+    subject_roles = current_app.organization_db.retrieve_subject_roles(organization, plaintext_username)
 
     response = {
         "subject_roles": subject_roles
@@ -78,26 +78,34 @@ def list_subject_roles():
 
     return jsonify(data), 200
 
+@organization_bp.route('/roles/permissions', methods=['GET'])
+def list_role_permissions():
+    # Permissions of a role of the organization with which I have currently a session.
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-@organization_bp.route('/roles/<string:role>/permissions', methods=['GET'])
-def list_permissions(role):
-    # TODO: Logic to get permissions in one of my organization's roles 
-    session = request.args.get('session')
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
 
-    # Get organization name from session
-    organization_name = current_app.organization_db.get_organization_name(session)
+    ############################ Logic of the endpoint ############################
+    plaintext_role = plaintext.get("role")
 
-    role_data = current_app.organization_db.retrieve_role(organization_name, role)
+    role_permissions = current_app.organization_db.retrieve_role_permissions(organization, plaintext_role)
 
-    if not role_data:
-        return jsonify({'error': f'Role "{role}" not found in organization "{organization_name}"'}), 404
-    
-    permissions = role_data.get('permissions', [])
+    response = {
+        "role_permissions": role_permissions
+    }
 
-    if not permissions:
-        return jsonify({'message': f'No permissions assigned to role "{role}" in organization "{organization_name}"'}), 200
-    
-    return jsonify(permissions), 200
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        response,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
 
 
 @organization_bp.route('/roles', methods=['POST'])
@@ -255,8 +263,6 @@ def list_roles_subject(username):
 
     return jsonify(subject_roles), 200       
 
-
-
 @organization_bp.route('/subjects/state', methods=['PUT'])
 def update_subject_state():
     plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
@@ -315,7 +321,6 @@ def list_subject_state(username):
 
     return jsonify({'state': subject_data.get('state')}), 200
 
-
 @organization_bp.route('/subjects/state', methods=['GET'])
 def list_all_subjects_state():
     plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
@@ -373,7 +378,6 @@ def list_roles_permission(permission):
 
     return jsonify(permission_roles), 200
     
-
 # Documents Endpoints
 @organization_bp.route("/documents", methods=['GET'])
 def list_documents():
@@ -412,7 +416,6 @@ def list_documents():
         
     return jsonify(data), 200
     
-
 @organization_bp.route("/documents", methods=['POST'])
 def create_document():
     plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
@@ -489,7 +492,6 @@ def create_document():
     )
         
     return jsonify(data), 200
-
 
 @organization_bp.route("/documents/metadata", methods=['GET'])
 def get_document_metadata():
