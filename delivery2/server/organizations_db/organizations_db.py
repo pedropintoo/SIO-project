@@ -89,6 +89,15 @@ class OrganizationsDB:
             {"roles": 1}
         )
         return result
+    
+    def retrieve_role_subjects(self, organization_name, role_name):
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"roles": {role_name: 1}}
+        )
+        result = result.get('roles', {}).get(role_name, {}).get('subjects', [])
+        return result
+
 
     def update_role(self, organization_name, role_name, role_data):
         result = self.collection.update_one(

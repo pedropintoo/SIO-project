@@ -21,24 +21,36 @@ def list_orgs():
     
 # Roles Endpoints
 @organization_bp.route('/roles/<string:role>/subjects', methods=['GET'])
-def list_subjects(role):
-    # TODO: Logic to get subjects in one of my organization's roles
-    session = request.args.get('session')
+def list_role_subjects():
+    # This command lists the subjects of a role of the organization with which I have currently a session.
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-    # Get organization name from session
-    organization_name = current_app.organization_db.get_organization_name(session)
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
 
-    role_data = current_app.organization_db.retrieve_role(organization_name, role)
-    
-    if not role_data:
-        return jsonify({'error': f'Role "{role}" not found in organization "{organization_name}"'}), 404
-    
-    subjects = role_data.get('subjects', [])
+    ############################ Logic of the endpoint ############################
+    plaintext_role = plaintext.get("role")
 
-    if not subjects:
-        return jsonify({'message': f'No subjects assigned to role "{role}" in organization "{organization_name}"'}), 200
+    role_subjects = current_app.organization_db.retrieve_role_subjects(organization, plaintext_role)
 
-    return jsonify(subjects), 200
+    response = {
+        "role_subjects": role_subjects
+    }
+
+    current_app.logger.debug(f"Role subjects: {role_subjects}")
+
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        response,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
+
 
 @organization_bp.route('/roles/<string:role>/permissions', methods=['GET'])
 def list_permissions(role):
@@ -214,7 +226,9 @@ def list_roles_subject(username):
         if username in role_data.get('subjects', []):
             subject_roles.append(role)
 
-    return jsonify(subject_roles), 200        
+    return jsonify(subject_roles), 200       
+
+
 
 @organization_bp.route('/subjects/state', methods=['PUT'])
 def update_subject_state():

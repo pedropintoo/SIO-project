@@ -346,7 +346,7 @@ class Session(Command):
 
         print(result)
 
-        
+
     
 class Organization(Command):
     
@@ -389,10 +389,25 @@ class Organization(Command):
     def rep_list_role_subjects(self, session_file, role):
         """This command lists the subjects of a role of the organization with which I have currently a session"""
         # GET /api/v1/organizations/roles/<string:role>/subjects
-        with open(session, 'rb') as f:
-            session = f.read()
-        return requests.get(f'{self.server_address}/api/v1/organizations/roles/{role}/subjects', json={'session': session})
-    
+        # return requests.get(f'{self.server_address}/api/v1/organizations/roles/{role}/subjects', json={'session': session})
+
+        command = 'get'
+        endpoint = f'/api/v1/organizations/roles/{role}/subjects'
+        plaintext = {"role": role}
+
+        result = send_session_data(
+            self.logger,
+            self.server_address,
+            command,
+            endpoint,
+            session_file,
+            plaintext
+        )
+
+        for username, state in result.items():
+            print(f'{username}: {state}')
+
+
     # ---- Next iteration ----
     def rep_list_subject_roles(self, session_file, username):
         """This command lists the roles of a subject of the organization with which I have currently a session."""
