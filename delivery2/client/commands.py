@@ -267,12 +267,19 @@ class Session(Command):
             session_file, 
             plaintext
         )
+
+        print(result)
         
-        # Logic
+        # Read the existing JSON data
+        with open(session_file, 'r') as f:
+            data = json.load(f)
+        
+        # Update the JSON data
+        data["role"] = role
+        
+        # Write the updated data back to the file
         with open(session_file, 'w') as f:
-            session = json.load(f)
-            session['role'] = role
-            json.dump(session, f, indent=4)
+            json.dump(data, f, indent=4)
 
 
     # ---- Next iteration ---- 

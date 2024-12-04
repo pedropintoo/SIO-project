@@ -97,7 +97,7 @@ class OrganizationsDB:
         )
         return result.modified_count
 
-    def check_user_role(self, organization_name, username, role_name):
+    def check_user_role(self, logger, organization_name, username, role_name):
         """Check if a user is part of a specific role in an organization."""
         organization = self.collection.find_one({"name": organization_name})
         if not organization:
@@ -109,16 +109,16 @@ class OrganizationsDB:
 
         return username in role.get('subjects', [])
 
-    def check_role_permission(self, organization_name, roles, permission):
+    def check_role_permission(self, logger, organization_name, roles, permission):
         """Check if any of the specified roles have the given permission in an organization."""
         organization = self.collection.find_one({"name": organization_name})
+        
         if not organization:
             return False
         
-        for role_name in roles:
-            role = organization.get('roles', {}).get(role_name)
-            if role and permission in role.get('permissions', []):
-                return True
+        role = organization.get('roles', {}).get(roles)
+        if role and permission in role.get('permissions', []):
+            return True
         
         return False
 

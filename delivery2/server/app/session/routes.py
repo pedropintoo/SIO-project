@@ -17,15 +17,20 @@ def assume_session_role():
     plaintext_role = plaintext.get('role')
 
     # Check in the database if the username has that role in that organization
-    has_role = current_app.organization_db.check_user_role(organization_name, username, plaintext_role)
+    has_role = current_app.organization_db.check_user_role(current_app.logger, organization_name, username, plaintext_role)
+
+    current_app.logger.info(f'User {username} has role {plaintext_role} in organization {organization_name}: {has_role}')
 
     if has_role == False:
-        return jsonify({'error': 'User does not have the role in the organization'}), 403
-    
-    current_app.sessions[session_id]['role'] = plaintext_role
-    response = {
-        'message': 'Role assumed successfully'
-    }
+        response = {'error': 'User does not have the role in the organization'}
+    else:    
+        current_app.sessions[session_id]['role'] = plaintext_role
+
+        response = {
+            'state': f'Role "{plaintext_role}" assumed successfully'
+        }
+
+        current_app.logger.info(f'Role in session: {current_app.sessions[session_id]["role"]}')
 
     ###############################################################################
 
@@ -36,7 +41,7 @@ def assume_session_role():
         msg_id
     )
 
-    return jsonify(data), 200
+    return jsonify(data), 200 if has_role else 403
 
 
 
