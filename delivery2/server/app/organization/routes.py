@@ -274,6 +274,42 @@ def add_permission_to_role():
 
     return jsonify(data), 200
 
+@organization_bp.route('/roles/permissions', methods=['DELETE'])
+def remove_permission_from_role():
+    # Remove a permission from a role of the organization with which I have currently a session. This command requires a ROLE_MOD permission.
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Authorization ############################
+    permission_in_session = check_user_permission_in_session( "ROLE_MOD", current_app.sessions[session_id], current_app.organization_db)
+
+    if permission_in_session == False:
+        return jsonify({'error': 'User does not have a "ROLE_MOD" permission to remove a permission'}), 403
+    
+    ############################ Logic of the endpoint ############################
+    plaintext_role = plaintext.get("role")
+    plaintext_permission = plaintext.get("permission")
+
+    current_app.organization_db.remove_permission_from_role(organization, plaintext_role, plaintext_permission)
+
+    response = {
+        'state': f'Permission "{plaintext_permission}" removed from role "{plaintext_role}" in organization "{organization}"'
+    }
+
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        response,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
+
 @organization_bp.route('/roles/subjects', methods=['POST'])
 def add_subject_to_role():
     # Add a subject to a role of the organization with which I have currently a session. This command requires a ROLE_MOD permission.
@@ -297,6 +333,42 @@ def add_subject_to_role():
 
     response = {
         'state': f'Subject "{plaintext_subject}" added to role "{plaintext_role}" in organization "{organization}"'
+    }
+
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        response,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
+
+    return jsonify(data), 200
+
+@organization_bp.route('/roles/subjects', methods=['DELETE'])
+def remove_subject_from_role():
+    # Remove a subject from a role of the organization with which I have currently a session. This command requires a ROLE_MOD permission.
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Authorization ############################
+    permission_in_session = check_user_permission_in_session( "ROLE_MOD", current_app.sessions[session_id], current_app.organization_db)
+
+    if permission_in_session == False:
+        return jsonify({'error': 'User does not have a "ROLE_MOD" permission to remove a subject'}), 403
+    
+    ############################ Logic of the endpoint ############################
+    plaintext_role = plaintext.get("role")
+    plaintext_subject = plaintext.get("username")
+
+    current_app.organization_db.remove_subject_from_role(organization, plaintext_role, plaintext_subject)
+
+    response = {
+        'state': f'Subject "{plaintext_subject}" removed from role "{plaintext_role}" in organization "{organization}"'
     }
 
     ###############################################################################

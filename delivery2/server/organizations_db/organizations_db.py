@@ -224,10 +224,24 @@ class OrganizationsDB:
         )
         return result.modified_count
     
+    def remove_permission_from_role(self, organization_name, role_name, permission):
+        result = self.collection.update_one(
+            {"name": organization_name},
+            {"$pull": {f"roles.{role_name}.permissions": permission}}
+        )
+        return result.modified_count
+
     def add_subject_to_role(self, organization_name, role_name, subject):
         result = self.collection.update_one(
             {"name": organization_name},
             {"$push": {f"roles.{role_name}.subjects": subject}}
+        )
+        return result.modified_count
+    
+    def remove_subject_from_role(self, organization_name, role_name, subject):
+        result = self.collection.update_one(
+            {"name": organization_name},
+            {"$pull": {f"roles.{role_name}.subjects": subject}}
         )
         return result.modified_count
 
