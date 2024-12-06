@@ -105,8 +105,8 @@ new_role="new_role_$random_seed"
 
 ## Create subject credentials
 run_test success "1. Create subject credentials" ./rep_subject_credentials password1 state/new_data.pem
-run_test sucess "1(1). Create subject credentials" ./rep_subject_credentials $password2 $user_credentials_2
-run_test sucess "1(2). Create subject credentials" ./rep_subject_credentials $password3 $user_credentials_3
+run_test success "1(1). Create subject credentials" ./rep_subject_credentials $user_password_2 $user_credentials_2
+run_test success "1(2). Create subject credentials" ./rep_subject_credentials $user_password_3 $user_credentials_3
 ## Decrypt file
 # TODO:......
 
