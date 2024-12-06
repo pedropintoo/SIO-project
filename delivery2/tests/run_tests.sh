@@ -26,10 +26,12 @@ run_test() {
     if [ "$expect_failure" = "success" ]; then
         if [ $exit_code -ne 0 ]; then
             echo -e "${RED}Test failed: $test_name${NC}"
+            exit 1
         fi
     else
         if [ $exit_code -eq 0 ]; then
             echo -e "${RED}Test failed (expected failure but succeeded): $test_name${NC}"
+            exit 1
         fi
     fi
 }
@@ -46,18 +48,21 @@ run_test_output() {
     if [ "$expect_failure" = "success" ]; then
         if [ $exit_code -ne 0 ]; then
             echo -e "${RED}Test failed: $test_name${NC}"
+            echo -e "$output"
             exit 1
-            echo "$output"
         elif ! echo "$output" | grep -q "$expected_output"; then
             echo -e "${RED}Test failed: $test_name - Output does not contain expected text${NC}"
+            echo -e "$output"
             exit 1
         fi
     else
         if [ $exit_code -eq 0 ]; then
             echo -e "${RED}Test failed (expected failure but succeeded): $test_name${NC}"
+            echo -e "$output"
             exit 1
         elif echo "$output" | grep -q "$expected_output"; then
             echo -e "${RED}Test failed: $test_name - Output contains unexpected text${NC}"
+            echo -e "$output"
             exit 1
         fi
     fi
@@ -98,6 +103,7 @@ session_file="state/session_file1__$random_seed"
 session_file_2="state/session_file2__$random_seed"
 session_file_3="state/session_file3__$random_seed"
 session_file_4="state/session_file4__$random_seed"
+session_file_5="state/session_file5__$random_seed"
 
 new_role="new_role_$random_seed"
 
@@ -191,33 +197,36 @@ run_test_output success "{}" "15(4). Lists the documents of the organization" ./
 
 # ###################### AUTHORIZED COMMANDS ######################
 
-# Adds a new subject
-run_test success "16. Adds a new subject" ./rep_add_subject $session_file $username_2 $full_name_2 $email_2 $user_credentials_2
-run_test failure "16(1). Adds a new subject" ./rep_add_subject $session_file_2 $username_2 $full_name_2 $email_2 $user_credentials_2
+# Adds a new subject (fail)
+run_test failure "16. Adds a new subject" ./rep_add_subject $session_file_2 $username_2 $full_name_2 $email_2 $user_credentials_2
+
+# Adds a new subject and creates a session for the new user (success)
+run_test success "16(1). Adds a new subject" ./rep_add_subject $session_file $username_2 $full_name_2 $email_2 $user_credentials_2
+run_test success "16(2). Create a session for the new user" ./rep_create_session $organization_name $username_2 $user_password_2 $user_credentials_2 $session_file_5
 
 ## Suspends a subject
-run_test failure "17. Suspends a subject" ./rep_suspend_subject $session_file_2 $username_2
+run_test failure "17. Suspends a subject" ./rep_suspend_subject $session_file_5 $username_2 # user does not have a SUBJECT_DOWN permission
 run_test success "17(1). Suspends a subject" ./rep_suspend_subject $session_file $username_2
 
 ## Activate a subject
-run_test success "18. Activate a subject" ./rep_activate_subject $session_file $username_2
-run_test failure "18(1). Activate a subject" ./rep_activate_subject $session_file_2 $username_2
+run_test failure "18. Activate a subject" ./rep_activate_subject $session_file_5 $username_2 # user does not have a SUBJECT_UP permission
+run_test success "18(1). Activate a subject" ./rep_activate_subject $session_file $username_2
 
 ## Adds a new role
-run_test success "19. Adding a new role" ./rep_add_role $session_file $new_role
-run_test failure "19(1). Adding a new role" ./rep_add_role $session_file_2 $new_role
+run_test failure "19. Adding a new role" ./rep_add_role $session_file_2 $new_role # user does not have a ROLE_NEW permission
+run_test success "19(1). Adding a new role" ./rep_add_role $session_file $new_role
 
 ## Adds a permission to a role
 run_test success "20. Adds a permission to a role" ./rep_add_permission $session_file $new_role SUBJECT_NEW
 
 ## Adds a subject to a role
 run_test success "21. Adds a subject to a role" ./rep_add_permission $session_file $new_role $username_2
-./rep_assume_role $session_file_2 $new_role
+run_test success "21(1). Assume session role" ./rep_assume_role $session_file_5 $new_role # now has the role
 
 ## Suspends a role
-run_test success "22. Suspends a role" ./rep_suspend_role $session_file 
+run_test success "22. Suspends a role" ./rep_suspend_role $session_file $new_role
 
-## Trys to add a subject with a suspended role
+## Tries to add a subject with a suspended role
 run_test failure "22(1). Adds a new subject with a suspended role" ./rep_add_subject $session_file_2 $username_3 $full_name_3 $email_3 $user_credentials_3
 
 ## Reactivates a role
@@ -243,6 +252,7 @@ run_test success "24(1). Adds a new subject with a reactivated role" ./rep_add_s
 
 # ## Releases the given role
 # run_test success "Releases the session role [Managers]" ./rep_drop_role $session_file Managers
+
 
 # ###################### AUTHORIZED COMMANDS ######################
 
