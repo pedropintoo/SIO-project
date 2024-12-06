@@ -200,6 +200,8 @@ class OrganizationsDB:
         # for role in all_roles:
         #     if role and permission in role.get('permissions', []):
         #         return True
+        for role_session in roles_session:
+
         
         return False
 
