@@ -203,14 +203,14 @@ class File(Command):
     def ___init__(self, logger, state):
         super().__init__(logger, state)
         
-    def rep_get_file(self, file_handle, file=None):
+    def rep_get_file(self, file_handle, file=None, output=True):
         """This command downloads a file given its handle. The file contents are written to stdout or to the file referred in the optional last argument."""
         # GET /api/v1/files/
         
         response = requests.get(f'{self.server_address}/api/v1/files/', json={'file_handle': file_handle})
 
         if response.status_code != 200:
-            raise Exception(f'[response.status_code] Failed to get file. Response: {response.text}')
+            raise Exception(f'[{response.status_code}] Failed to get file. Response: {response.text}')
         
         # Get associated data
         associated_data_string = response.json()['associated_data']
@@ -236,11 +236,12 @@ class File(Command):
         except InvalidSignature:
             raise Exception(f'Failed to verify signature')
         
-        if file:
-            with open(file, 'wb') as f:
-                f.write(file_content)
-        else:
-            sys.stdout.buffer.write(file_content)
+        if output:
+            if file:
+                with open(file, 'wb') as f:
+                    f.write(file_content)
+            else:
+                sys.stdout.buffer.write(file_content)
         
         return file_content
         
@@ -253,7 +254,6 @@ class Session(Command):
     def rep_assume_role(self, session_file, role):
         """This command requests the given role for the session"""
         # POST /api/v1/sessions/roles
-        # requests.post(f'{self.server_address}/api/v1/sessions/roles', json={'session': session, 'role': role})
         
         command = 'post'
         endpoint = '/api/v1/sessions/roles'
@@ -292,7 +292,6 @@ class Session(Command):
     def rep_drop_role(self, session_file, role):
         """This command releases the given role for the session"""
         # DELETE /api/v1/sessions/roles
-        # requests.delete(f'{self.server_address}/api/v1/sessions/roles', json={'session': session, 'role': role})
 
         command = 'delete'
         endpoint = '/api/v1/sessions/roles'
@@ -329,7 +328,6 @@ class Session(Command):
     def rep_list_roles(self, session_file):
         """Lists the current session roles."""
         # GET /api/v1/sessions/roles
-        # requests.get(f'{self.server_address}/api/v1/sessions/roles', json={'session': session})
 
         command = 'get'
         endpoint = '/api/v1/sessions/roles'
@@ -347,7 +345,6 @@ class Session(Command):
         print(result)
 
 
-    
 class Organization(Command):
     
     def __init__(self, logger, state):
@@ -389,7 +386,6 @@ class Organization(Command):
     def rep_list_role_subjects(self, session_file, role):
         """This command lists the subjects of a role of the organization with which I have currently a session"""
         # GET /api/v1/organizations/roles/subjects
-        # return requests.get(f'{self.server_address}/api/v1/organizations/roles/{role}/subjects', json={'session': session})
 
         command = 'get'
         endpoint = f'/api/v1/organizations/roles/subjects'
@@ -435,7 +431,6 @@ class Organization(Command):
     def rep_list_role_permissions(self, session_file, role):
         """This command lists the permissions of a role of the organization with which I have currently a session."""
         # GET /api/v1/organizations/roles/permissions
-        # return requests.get(f'{self.server_address}/api/v1/organizations/roles/{role}/permissions', json={'session': session})
 
         command = 'get'
         endpoint = f'/api/v1/organizations/roles/permissions'
@@ -458,7 +453,6 @@ class Organization(Command):
     def rep_list_permission_roles(self, session_file, permission):
         """This command lists the roles of the organization with which I have currently a session that have a given permission. Use the names previously referred for the permission rights."""
         # GET /api/v1/organizations/permissions/roles
-        # return requests.get(f'{self.server_address}/api/v1/organizations/permissions/{permission}/roles', json={'session': session})
 
         command = 'get'
         endpoint = f'/api/v1/organizations/permissions/roles'
@@ -528,6 +522,7 @@ class Organization(Command):
     def rep_suspend_subject(self, session_file, username):
         """These commands change the state of a subject in the organization with which I have currently a session. These commands require a SUBJECT_DOWN and SUBJECT_UP permission, respectively."""
         # PUT /api/v1/organizations/subjects/state
+        
         command = 'put'
         endpoint = f'/api/v1/organizations/subjects/state'
         plaintext = {'username': username, 'state': 'suspended'}
@@ -546,6 +541,7 @@ class Organization(Command):
     def rep_activate_subject(self, session_file, username):
         """These commands change the state of a subject in the organization with which I have currently a session. These commands require a SUBJECT_DOWN and SUBJECT_UP permission, respectively."""
         # PUT /api/v1/organizations/subjects/state
+        
         command = 'put'
         endpoint = f'/api/v1/organizations/subjects/state'
         plaintext = {'username': username, 'state': 'active'}
@@ -565,7 +561,6 @@ class Organization(Command):
     def rep_add_role(self, session_file, role):
         """This command adds a role to the organization with which I have currently a session. This commands requires a ROLE_NEW permission."""
         # POST /api/v1/organizations/roles
-        # return requests.post(f'{self.server_address}/api/v1/organizations/roles', json={'session': session, 'role': role})
 
         command = 'post'
         endpoint = '/api/v1/organizations/roles'
@@ -586,7 +581,6 @@ class Organization(Command):
     def rep_suspend_role(self, session_file, role):
         """This command suspends a role in the organization with which I have currently a session. This command requires a ROLE_DOWN permission."""
         # PUT /api/v1/organizations/roles/suspend
-        # return requests.put(f'{self.server_address}/api/v1/organizations/roles/{role}/state', json={'session': session})
 
         command = 'put'
         endpoint = f'/api/v1/organizations/roles/suspend'
@@ -607,7 +601,6 @@ class Organization(Command):
     def rep_reactivate_role(self, session_file, role):
         """This command reactivate a role in the organization with which I have currently a session. This command requires a ROLE_UP permission."""
         # PUT /api/v1/organizations/roles/reactivate
-        # return requests.put(f'{self.server_address}/api/v1/organizations/roles/{role}/state', json={'session': session})
 
         command = 'put'
         endpoint = f'/api/v1/organizations/roles/reactivate'
@@ -694,6 +687,7 @@ class Organization(Command):
     def rep_add_doc(self, session_file, document_name, file):
         """This command adds a document with a given name to the organization with which I have currently a session. The document’s contents is provided as parameter with a file name. This commands requires a DOC_NEW permission."""
         # POST /api/v1/organizations/documents
+        
         with open(file, 'rb') as f:
             file_content = f.read()
         
@@ -710,7 +704,7 @@ class Organization(Command):
         endpoint = '/api/v1/organizations/documents'
         plaintext = {
             'encryption_file': encrypted_file,
-            'document_acl': {}, # TODO: check this
+            'document_acl': {}, # TODO: check this (remove this line, put this logic on server side!)
             'file_handle': file_handle_hex,
             'name': document_name,
             'key': key.hex(),
@@ -728,9 +722,12 @@ class Organization(Command):
         
         print(result)
 
-    def rep_get_doc_metadata(self, session_file, document_name):
+    def rep_get_doc_metadata(self, session_file, document_name, output=True):
         """This command fetches the metadata of a document with a given name to the organization with which I have currently a session. The output of this command is useful for getting the clear text contents of a document’s file. This commands requires a DOC_READ permission."""
         # GET /api/v1/organizations/documents/metadata
+        
+        #TODO: add permission check in server side! This commands requires a DOC_READ permission.
+
         command = 'get'
         endpoint = f'/api/v1/organizations/documents/metadata'
         plaintext = {'document_name': document_name}
@@ -744,22 +741,23 @@ class Organization(Command):
             plaintext
         )
 
-        print(result)
+        if output:
+            print(result)
 
         return result
         
     def rep_get_doc_file(self, session_file, document_name, file=None):
         """This command is a combination of rep_get_doc_metadata with rep_get_file and rep_decrypt_file. The file contents are written to stdout or to the file referred in the optional last argument. This commands requires a DOC_READ permission."""
        
-        metadata = self.rep_get_doc_metadata(session_file, document_name)
+        metadata = self.rep_get_doc_metadata(session_file, document_name, output=False)
         file_handle = metadata['file_handle'] 
         file_obj = File(self.logger, self.state)
-        encrypted_data = file_obj.rep_get_file(file_handle)
+        encrypted_data = file_obj.rep_get_file(file_handle, output=False)
         key = bytes.fromhex(metadata['key'])
         alg = metadata['alg'] 
         
         # clear buffer
-        sys.stdout.flush()
+        sys.stdout.flush() # TODO: check this! maybe is output too much
 
         try:
             if alg == 'AES-GCM':
@@ -791,6 +789,9 @@ class Organization(Command):
     def rep_delete_doc(self, session_file, document_name):
         """This command clears file_handle in the metadata of a document with a given name on the organization with which I have currently a session. The output of this command is the file_handle that ceased to exist in the document’s metadata. This commands requires a DOC_DELETE permission."""
         # DELETE /api/v1/organizations/documents/
+
+        # TODO: This commands requires a DOC_DELETE permission in the server side.
+
         command = 'delete'
         endpoint = f'/api/v1/organizations/documents/'
         plaintext = {'document_name': document_name}
@@ -809,5 +810,20 @@ class Organization(Command):
     # ---- Next iteration ----
     def rep_acl_doc(self, session_file, document_name, operation, role, permission):
         """This command changes the ACL of a document by adding (+) or removing (-) a permission for a given role. Use the names previously referred for the permission rights. This commands requires a DOC_ACL permission."""
-        # GET /api/v1/organizations/documents/<string:document_name>/acl
-        return requests.get(f'{self.server_address}/api/v1/organizations/documents/{document_name}/acl', json={'session': session, 'operation': operation, 'role': role, 'permission': permission})
+        # POST /api/v1/organizations/documents/acl
+
+        command = 'post'
+        endpoint = f'/api/v1/organizations/documents/acl'
+        plaintext = {'document_name': document_name, 'operation': operation, 'role': role, 'permission': permission}
+
+        result = send_session_data(
+            self.logger,
+            self.server_address,
+            command,
+            endpoint,
+            session_file,
+            plaintext
+        )
+
+        print(result)
+        

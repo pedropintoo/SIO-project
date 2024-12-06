@@ -6,7 +6,6 @@ from utils.session import decapsulate_session_data, encapsulate_session_data
 
 @session_bp.route('/roles', methods=['POST'])
 def assume_session_role():
-    # TODO: Logic to assume a session role
     plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
     # Update session msg_id
@@ -27,7 +26,6 @@ def assume_session_role():
         response = {
             'state': f'Role "{plaintext_role}" assumed successfully'
         }
-
 
     ###############################################################################
 

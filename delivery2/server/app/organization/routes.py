@@ -80,7 +80,6 @@ def list_role_permissions():
 
 @organization_bp.route('/roles', methods=['POST'])
 def add_role():
-    # TODO: Logic to add a role
     plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
     # Update session msg_id
@@ -88,16 +87,18 @@ def add_role():
     current_app.sessions[session_id]['msg_id'] = msg_id
 
     ############################ Authorization ############################
-    permission_in_session = check_user_permission_in_session( "ROLE_NEW", current_app.sessions[session_id], current_app.organization_db)
+    permission_in_session = check_user_permission_in_session("ROLE_NEW", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
-        return jsonify({'error': 'User does not have a "ROLE_NEW" permission to add a role'}), 403
+        response = {'error': 'User does not have a "ROLE_NEW" permission to add a role'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
     
     ############################ Logic of the endpoint ############################
     plaintext_role = plaintext.get("role")
 
     role_details = {
-        'state': 'active', # not sure if it should be active or suspended
+        'state': 'active',
         'subjects': [],
         'permissions': []
     }
@@ -118,55 +119,64 @@ def add_role():
 
     return jsonify(data), 200
 
-@organization_bp.route('/roles/<string:role>/subjects', methods=['POST'])
-def action_subject_to_role(role):
-    # TODO: Logic to add or remove a subject from a role
-    session = request.args.get('session')   
+# @organization_bp.route('/roles/<string:role>/subjects', methods=['POST'])
+# def action_subject_to_role(role):
+#     session = request.args.get('session')   
 
-    # Get organization name from session
-    organization_name = current_app.organization_db.get_organization_name(session)  
+#     # Get organization name from session
+#     organization_name = current_app.organization_db.get_organization_name(session)  
 
-    role_data = current_app.organization_db.retrieve_role(organization_name, role) 
-    if not role_data:
-        return jsonify({'error': f'Role "{role}" not found in organization "{organization_name}"'}), 404  
+#     role_data = current_app.organization_db.retrieve_role(organization_name, role) 
+#     if not role_data:
+#         response = {'error': f'Role "{role}" not found in organization "{organization_name}"'}
+#         data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+#         return jsonify(data), 403
           
-    data = request.get_json()
-    action = data.get('action') 
+#     data = request.get_json()
+#     action = data.get('action') 
     
-    if action == 'add':
-        role_data['subjects'].append(data.get('subject'))
+#     if action == 'add':
+#         role_data['subjects'].append(data.get('subject'))
 
-    elif action == 'remove':
-        role_data['subjects'].remove(data.get('subject'))
+#     elif action == 'remove':
+#         role_data['subjects'].remove(data.get('subject'))
     
-    current_app.organization_db.update_role(organization_name, role, role_data)
+#     current_app.organization_db.update_role(organization_name, role, role_data)
 
-    return jsonify({f'Subject "{data.get("subject")}" {action}ed to role "{role}" in organization "{organization_name}"'}), 200
+#     return jsonify({f'Subject "{data.get("subject")}" {action}ed to role "{role}" in organization "{organization_name}"'}), 200
 
-@organization_bp.route('/roles/<string:role>/permissions', methods=['POST'])
-def action_permission_to_role(role):
-    # TODO: Logic to add or remove a permission from a role
-    session = request.args.get('session')
+# @organization_bp.route('/roles/<string:role>/permissions', methods=['POST'])
+# def action_permission_to_role(role):
+#     session = request.args.get('session')
 
-    # Get organization name from session
-    organization_name = current_app.organization_db.get_organization_name(session)
+#     # Get organization name from session
+#     organization_name = current_app.organization_db.get_organization_name(session)
 
-    role_data = current_app.organization_db.retrieve_role(organization_name, role)
+#     role_data = current_app.organization_db.retrieve_role(organization_name, role)
 
-    if not role_data:
-        return jsonify({'error': f'Role "{role}" not found in organization "{organization_name}"'}), 404
+#     if not role_data:
+#         response = {'error': f'Role "{role}" not found in organization "{organization_name}"'}
+        
+#         data = encapsulate_session_data(
+#             response,
+#             session_id,
+#             derived_key_hex,
+#             msg_id
+#         )
 
-    data = request.get_json()
-    action = data.get('action')    
+#         return jsonify(data), 403
 
-    if action == 'add':
-        role_data['permissions'].append(data.get('permission'))
-    elif action == 'remove':
-        role_data['permissions'].remove(data.get('permission'))
+#     data = request.get_json()
+#     action = data.get('action')    
 
-    current_app.organization_db.update_role(organization_name, role, role_data)
+#     if action == 'add':
+#         role_data['permissions'].append(data.get('permission'))
+#     elif action == 'remove':
+#         role_data['permissions'].remove(data.get('permission'))
 
-    return jsonify({f'Permission "{data.get("permission")}" {action}ed to role "{role}" in organization "{organization_name}"'}), 200
+#     current_app.organization_db.update_role(organization_name, role, role_data)
+
+#     return jsonify({f'Permission "{data.get("permission")}" {action}ed to role "{role}" in organization "{organization_name}"'}), 200
 
 @organization_bp.route('/roles/suspend', methods=['PUT'])
 def suspend_role():
@@ -181,7 +191,9 @@ def suspend_role():
     permission_in_session = check_user_permission_in_session( "ROLE_DOWN", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
-        return jsonify({'error': 'User does not have a "ROLE_DOWN" permission to suspend a role'}), 403
+        response = {'error': 'User does not have a "ROLE_DOWN" permission to suspend a role'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
     
     ############################ Logic of the endpoint ############################
     plaintext_role = plaintext.get("role")
@@ -216,7 +228,9 @@ def reactivate_role():
     permission_in_session = check_user_permission_in_session( "ROLE_UP", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
-        return jsonify({'error': 'User does not have a "ROLE_UP" permission to reactivate a role'}), 403
+        response = {'error': 'User does not have a "ROLE_UP" permission to reactivate a role'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
     
     ############################ Logic of the endpoint ############################
     plaintext_role = plaintext.get("role")
@@ -251,7 +265,9 @@ def add_permission_to_role():
     permission_in_session = check_user_permission_in_session( "ROLE_MOD", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
-        return jsonify({'error': 'User does not have a "ROLE_MOD" permission to add a permission'}), 403
+        response = {'error': 'User does not have a "ROLE_MOD" permission to add a permission'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
     
     ############################ Logic of the endpoint ############################
     plaintext_role = plaintext.get("role")
@@ -287,7 +303,9 @@ def remove_permission_from_role():
     permission_in_session = check_user_permission_in_session( "ROLE_MOD", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
-        return jsonify({'error': 'User does not have a "ROLE_MOD" permission to remove a permission'}), 403
+        response = {'error': 'User does not have a "ROLE_MOD" permission to remove a permission'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
     
     ############################ Logic of the endpoint ############################
     plaintext_role = plaintext.get("role")
@@ -323,7 +341,9 @@ def add_subject_to_role():
     permission_in_session = check_user_permission_in_session( "ROLE_MOD", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
-        return jsonify({'error': 'User does not have a "ROLE_MOD" permission to add a subject'}), 403
+        response = {'error': 'User does not have a "ROLE_MOD" permission to add a permission'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
     
     ############################ Logic of the endpoint ############################
     plaintext_role = plaintext.get("role")
@@ -359,7 +379,9 @@ def remove_subject_from_role():
     permission_in_session = check_user_permission_in_session( "ROLE_MOD", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
-        return jsonify({'error': 'User does not have a "ROLE_MOD" permission to remove a subject'}), 403
+        response = {'error': 'User does not have a "ROLE_MOD" permission to remove a subject'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
     
     ############################ Logic of the endpoint ############################
     plaintext_role = plaintext.get("role")
@@ -395,7 +417,9 @@ def add_subject():
     permission_in_session = check_user_permission_in_session( "SUBJECT_NEW", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
-        return jsonify({'error': 'User does not have a "SUBJECT_NEW" permission to add a subject'}), 403
+        response = {'error': 'User does not have a "SUBJECT_NEW" permission to add a subject'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
     
     ############################ Logic of the endpoint ############################
     plaintext_username = plaintext.get("username")
@@ -467,24 +491,22 @@ def update_subject_state():
     subject_data = current_app.organization_db.retrieve_subject(organization_name, plaintext_username)
 
     if not subject_data:
-        response = {
-            'error': f'Subject "{plaintext_username}" not found in organization "{organization_name}"'
-        }
-        code = 404
-    else:
-        if plaintext_state != 'active' and plaintext_state != 'suspended':
-            response = {
-                'error': f'Invalid state "{plaintext_state}". State must be "active" or "suspend"'
-            }
-            code = 400
-        else:
-            subject_data["state"] = plaintext_state
-            
-            current_app.organization_db.update_subject(organization_name, plaintext_username, subject_data)
-            response = {
-                'state': f'Subject "{plaintext_username}" state updated to "{subject_data["state"]}" in organization "{organization_name}"'
-            }
-            code = 200
+        response = {'error': f'Subject "{plaintext_username}" not found in organization "{organization_name}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
+    
+    if plaintext_state != 'active' and plaintext_state != 'suspended':
+        response = {'error': f'Invalid state "{plaintext_state}". State must be "active" or "suspend"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
+    
+    subject_data["state"] = plaintext_state
+    
+    current_app.organization_db.update_subject(organization_name, plaintext_username, subject_data)
+    response = {
+        'state': f'Subject "{plaintext_username}" state updated to "{subject_data["state"]}" in organization "{organization_name}"'
+    }
+    
     ###############################################################################
 
     data = encapsulate_session_data(
@@ -494,22 +516,21 @@ def update_subject_state():
         msg_id
     )
 
-    return jsonify(data), code
+    return jsonify(data), 200
 
-@organization_bp.route('/subjects/<string:username>/state', methods=['GET'])
-def list_subject_state(username):
-    # TODO: Logic to show the state of a subject
-    session = request.args.get('session')
+# @organization_bp.route('/subjects/<string:username>/state', methods=['GET'])
+# def list_subject_state(username):
+#     session = request.args.get('session')
 
-    # Get organization name from session
-    organization_name = current_app.organization_db.get_organization_name(session)
+#     # Get organization name from session
+#     organization_name = current_app.organization_db.get_organization_name(session)
 
-    subject_data = current_app.organization_db.retrieve_subject(organization_name, username)
+#     subject_data = current_app.organization_db.retrieve_subject(organization_name, username)
 
-    if not subject_data:
-        return jsonify({'error': f'Subject "{username}" not found in organization "{organization_name}"'}), 404
+#     if not subject_data:
+#         return jsonify({'error': f'Subject "{username}" not found in organization "{organization_name}"'}), 404
 
-    return jsonify({'state': subject_data.get('state')}), 200
+#     return jsonify({'state': subject_data.get('state')}), 200
 
 @organization_bp.route('/subjects/state', methods=['GET'])
 def list_all_subjects_state():
@@ -617,6 +638,14 @@ def create_document():
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
 
+    ############################ Authorization ############################
+    permission_in_session = check_user_permission_in_session( "DOC_NEW", current_app.sessions[session_id], current_app.organization_db)
+
+    if permission_in_session == False:
+        response = {'error': 'User does not have a "DOC_NEW" permission to create a document'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
+
     ############################ Logic of the endpoint ############################
     encryption_file = plaintext.get("encryption_file")
     current_app.logger.debug(f"document_acl: {plaintext.get('document_acl')}")
@@ -636,14 +665,18 @@ def create_document():
         data = encryption_file_bytes[12:]
         original_content = symmetric.decrypt(key, nonce, data, None)
     else:
-        return jsonify({'error': 'Invalid algorithm'}), 400
+        response = {'error': 'Invalid algorithm'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 400
         
     digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
     digest.update(original_content)
     file_content_digest = digest.finalize()
     
     if file_content_digest != file_handle_bytes:
-        return jsonify({'error': 'Invalid file handle'}), 400
+        response = {'error': 'Invalid file handle'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 400
 
     key_salt = os.urandom(16)
     master_key_kdf = PBKDF2HMAC(
@@ -675,6 +708,7 @@ def create_document():
         file.write(encryption_file_bytes)
 
     new_plaintext = { 'state': f'Document "{name}" created in organization "{organization_name}"' }
+    
     ###############################################################################
 
     data = encapsulate_session_data(
@@ -688,12 +722,21 @@ def create_document():
 
 @organization_bp.route("/documents/metadata", methods=['GET'])
 def get_document_metadata():
-    # TODO: Logic to download metadata of a document
+    # Fetches the metadata of a document with a given name to the organization with which I have currently a session. The output of this command is useful for getting the clear text contents of a document’s file. This commands requires a DOC_READ permission.
+
     plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Authorization ############################
+    permission_in_session = check_user_permission_in_session( "DOC_READ", current_app.sessions[session_id], current_app.organization_db)
+
+    if permission_in_session == False:
+        response = {'error': 'User does not have a "DOC_READ" permission to read a document'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
 
     ############################ Logic of the endpoint ############################
     document_name = plaintext.get("document_name")
@@ -716,8 +759,9 @@ def get_document_metadata():
         key = symmetric.decrypt(master_key_kdf, stored_key_nonce, stored_key, None) 
     
     except InvalidTag:
-        return jsonify({'error': f'Invalid tag'}), 400   
-    
+        response = {'error': f'Invalid tag'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 400    
 
     # Filter to include only public properties
     new_plaintext = {
@@ -745,12 +789,21 @@ def get_document_metadata():
 
 @organization_bp.route("/documents/", methods=['DELETE'])
 def delete_document():
+    # clears file_handle in the metadata of a document with a given name on the organization with which I have currently a session. The output of this command is the file_handle that ceased to exist in the document’s metadata. This commands requires a DOC_DELETE permission.
 
     plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
     
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################ Authorization ############################
+    permission_in_session = check_user_permission_in_session( "DOC_DELETE", current_app.sessions[session_id], current_app.organization_db)
+    
+    if permission_in_session == False:
+        response = {'error': 'User does not have a "DOC_DELETE" permission to delete a document'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
 
     ############################ Logic of the endpoint ############################
     document_name = plaintext.get("document_name")
@@ -775,7 +828,9 @@ def delete_document():
         key = symmetric.decrypt(master_key_kdf, stored_key_nonce, stored_key, None) 
     
     except InvalidTag:
-        return jsonify({'error': f'Invalid tag'}), 400   
+        response = {'error': f'Invalid tag'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 400   
     
     # Filter to include only public properties
     new_plaintext = {
@@ -795,18 +850,50 @@ def delete_document():
 
     return jsonify(data), 200
 
-@organization_bp.route("/documents/<string:document_name>/acl", methods=['PUT'])
-def update_document_acl(document_name):
-    # TODO: Logic to update document ACL
-    session = request.args.get('session')
+@organization_bp.route("/documents/acl", methods=['POST'])
+def update_acl_doc():
+    # changes the ACL of a document by adding (+) or removing (-) a permission for a given role. Use the names previously referred for the permission rights. This commands requires a DOC_ACL permission.
+    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
-    # Get organization name from session
-    organization_name = current_app.organization_db.get_organization_name(session)
+    # Update session msg_id
+    msg_id += 1
+    current_app.sessions[session_id]['msg_id'] = msg_id
 
-    data = request.get_json()
-    new_acl = data.get('acl') # new_acl example: "tios_de_aveiro": ["DOC_ACL", "DOC_READ"]
+    ############################ Authorization ############################
+    permission_in_session = check_user_permission_in_session( "DOC_ACL", current_app.sessions[session_id], current_app.organization_db )
 
-    current_app.organization_db.update_acl(organization_name, document_name, new_acl)
+    if permission_in_session == False:
+        response = {'error': 'User does not have a "DOC_ACL" permission to change the ACL of a document'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
+
+    ############################ Logic of the endpoint ############################
+    plaintext_document_name = plaintext.get("document_name")
+    plaintext_operation = plaintext.get("operation")
+    plaintext_role = plaintext.get("role")
+    plaintext_permission = plaintext.get("permission")
+
+    if plaintext_operation == "+":
+        current_app.organization_db.add_permission_to_document(organization, plaintext_document_name, plaintext_role, plaintext_permission)
+    elif plaintext_operation == "-":
+        current_app.organization_db.remove_permission_from_document(organization, plaintext_document_name, plaintext_role, plaintext_permission)
+    else:
+        response = {'error': 'Invalid operation. Operation must be "+" or "-"'}
+
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
+
+    response = {
+        'state': f'ACL of document "{plaintext_document_name}" updated in organization "{organization}"'
+    }
+
+    ###############################################################################
+
+    data = encapsulate_session_data(
+        response,
+        session_id,
+        derived_key_hex,
+        msg_id
+    )
     
-    return jsonify({f'Document "{document_name}" ACL updated in organization "{organization_name}"'}), 200
-
+    return jsonify(data), 200
