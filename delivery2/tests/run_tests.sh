@@ -85,6 +85,12 @@ user_password_2="user_password_2_$random_seed"
 user_credentials_2="state/user_credentials_2_$random_seed.pem"
 email_2="email_2_$random_seed"
 
+username_3="user_3_$random_seed"
+full_name_3="name_3_$random_seed"
+user_password_3="user_password_3_$random_seed"
+user_credentials_3="state/user_credentials_3_$random_seed.pem"
+email_3="email_3_$random_seed"
+
 document_name="requirements_$random_seed"
 file="../requirements.txt"
 
@@ -99,7 +105,8 @@ new_role="new_role_$random_seed"
 
 ## Create subject credentials
 run_test success "1. Create subject credentials" ./rep_subject_credentials password1 state/new_data.pem
-
+run_test sucess "1(1). Create subject credentials" ./rep_subject_credentials $password2 $user_credentials_2
+run_test sucess "1(2). Create subject credentials" ./rep_subject_credentials $password3 $user_credentials_3
 ## Decrypt file
 # TODO:......
 
@@ -184,23 +191,40 @@ run_test_output success "{}" "15(4). Lists the documents of the organization" ./
 
 # ###################### AUTHORIZED COMMANDS ######################
 
-# # Adds a new subject
-# run_test success "16. Adds a new subject" ./rep_add_subject $session_file $username_2 $full_name_2 $email_2 $user_credentials
+# Adds a new subject
+run_test success "16. Adds a new subject" ./rep_add_subject $session_file $username_2 $full_name_2 $email_2 $user_credentials_2
+run_test failure "16(1). Adds a new subject" ./rep_add_subject $session_file_2 $username_2 $full_name_2 $email_2 $user_credentials_2
 
-# ## Suspends a subject
-# run_test success "17. Suspends a subject" ./rep_suspend_subject $session_file $username
+## Suspends a subject
+run_test failure "17. Suspends a subject" ./rep_suspend_subject $session_file_2 $username_2
+run_test success "17(1). Suspends a subject" ./rep_suspend_subject $session_file $username_2
 
-# ## Activate a subject
-# run_test success "18. Activate a subject" ./rep_activate_subject $session_file $username
+## Activate a subject
+run_test success "18. Activate a subject" ./rep_activate_subject $session_file $username_2
+run_test failure "18(1). Activate a subject" ./rep_activate_subject $session_file_2 $username_2
 
-# ## Adds a new role
-# run_test success "19. Adding a new role" ./rep_add_role $session_file $new_role
+## Adds a new role
+run_test success "19. Adding a new role" ./rep_add_role $session_file $new_role
+run_test failure "19(1). Adding a new role" ./rep_add_role $session_file_2 $new_role
 
-# ## Suspends a role
-# run_test success "20. Suspends a role" ./rep_suspend_role $session_file $new_role
+## Adds a permission to a role
+run_test success "20. Adds a permission to a role" ./rep_add_permission $session_file $new_role SUBJECT_NEW
 
-# ## Reactivates a role
-# run_test success "21. Reactivates a role" ./rep_reactivate_role $session_file $new_role
+## Adds a subject to a role
+run_test success "21. Adds a subject to a role" ./rep_add_permission $session_file $new_role $username_2
+./rep_assume_role $session_file_2 $new_role
+
+## Suspends a role
+run_test success "22. Suspends a role" ./rep_suspend_role $session_file 
+
+## Trys to add a subject with a suspended role
+run_test failure "22(1). Adds a new subject with a suspended role" ./rep_add_subject $session_file_2 $username_3 $full_name_3 $email_3 $user_credentials_3
+
+## Reactivates a role
+run_test success "24. Reactivates a role" ./rep_reactivate_role $session_file $new_role
+
+## Adds a new subject since the role is active
+run_test success "24(1). Adds a new subject with a reactivated role" ./rep_add_subject $session_file_2 $username_3 $full_name_3 $email_3 $user_credentials_3
 
 # ## Adds a subject to a role
 # run_test success "22. Adds a subject to a role" ./rep_add_permission $session_file $new_role $username
