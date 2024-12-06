@@ -203,7 +203,7 @@ def suspend_role():
     current_app.sessions[session_id]['msg_id'] = msg_id
 
     ############################ Authorization ############################
-    permission_in_session = check_user_permission_in_session( "ROLE_DOWN", current_app.sessions[session_id], current_app.organization_db)
+    permission_in_session = check_user_permission_in_session(current_app.logger, "ROLE_DOWN", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
         response = {'error': 'User does not have a "ROLE_DOWN" permission to suspend a role'}
@@ -245,7 +245,7 @@ def reactivate_role():
     current_app.sessions[session_id]['msg_id'] = msg_id
 
     ############################ Authorization ############################
-    permission_in_session = check_user_permission_in_session( "ROLE_UP", current_app.sessions[session_id], current_app.organization_db)
+    permission_in_session = check_user_permission_in_session(current_app.logger, "ROLE_UP", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
         response = {'error': 'User does not have a "ROLE_UP" permission to reactivate a role'}
@@ -287,7 +287,7 @@ def add_permission_to_role():
     current_app.sessions[session_id]['msg_id'] = msg_id
 
     ############################ Authorization ############################
-    permission_in_session = check_user_permission_in_session( "ROLE_MOD", current_app.sessions[session_id], current_app.organization_db)
+    permission_in_session = check_user_permission_in_session(current_app.logger, "ROLE_MOD", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
         response = {'error': 'User does not have a "ROLE_MOD" permission to add a permission'}
@@ -330,7 +330,7 @@ def remove_permission_from_role():
     current_app.sessions[session_id]['msg_id'] = msg_id
 
     ############################ Authorization ############################
-    permission_in_session = check_user_permission_in_session( "ROLE_MOD", current_app.sessions[session_id], current_app.organization_db)
+    permission_in_session = check_user_permission_in_session(current_app.logger, "ROLE_MOD", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
         response = {'error': 'User does not have a "ROLE_MOD" permission to remove a permission'}
@@ -373,7 +373,7 @@ def add_subject_to_role():
     current_app.sessions[session_id]['msg_id'] = msg_id
 
     ############################ Authorization ############################
-    permission_in_session = check_user_permission_in_session( "ROLE_MOD", current_app.sessions[session_id], current_app.organization_db)
+    permission_in_session = check_user_permission_in_session(current_app.logger, "ROLE_MOD", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
         response = {'error': 'User does not have a "ROLE_MOD" permission to add a permission'}
@@ -416,7 +416,7 @@ def remove_subject_from_role():
     current_app.sessions[session_id]['msg_id'] = msg_id
 
     ############################ Authorization ############################
-    permission_in_session = check_user_permission_in_session( "ROLE_MOD", current_app.sessions[session_id], current_app.organization_db)
+    permission_in_session = check_user_permission_in_session(current_app.logger, "ROLE_MOD", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
         response = {'error': 'User does not have a "ROLE_MOD" permission to remove a subject'}
@@ -459,9 +459,10 @@ def add_subject():
     current_app.sessions[session_id]['msg_id'] = msg_id
 
     ############################ Authorization ############################
-    permission_in_session = check_user_permission_in_session( "SUBJECT_NEW", current_app.sessions[session_id], current_app.organization_db)
+    permission_in_session = check_user_permission_in_session(current_app.logger, "SUBJECT_NEW", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
+        current_app.logger.error(f'User does not have a "SUBJECT_NEW" permission to add a subject')
         response = {'error': 'User does not have a "SUBJECT_NEW" permission to add a subject'}
         data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
         return jsonify(data), 403
@@ -686,23 +687,20 @@ def list_documents():
     date_str = plaintext.get("date_str")
     
     metadata = current_app.organization_db.list_documents(organization, creator, date_filter, date_str)
-    
-    if not metadata:
-        response = {'error': 'No documents found'}
-        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
-        return jsonify(data), 404
-    
+
     new_plaintext = {}
-    for obj in metadata:
-        document_handle, document_metadata = next(iter(obj.items()))
-        new_plaintext[document_handle] = {
-            "name": document_metadata.get("name"),
-            "create_date": document_metadata.get("create_date"),
-            "creator": document_metadata.get("creator"),
-            "file_handle": document_metadata.get("file_handle"),
-            "document_acl": document_metadata.get("document_acl"),
-            "deleter": document_metadata.get("deleter")
-        }
+    if metadata != None:
+        for obj in metadata:
+            document_handle, document_metadata = next(iter(obj.items()))
+            new_plaintext[document_handle] = {
+                "name": document_metadata.get("name"),
+                "create_date": document_metadata.get("create_date"),
+                "creator": document_metadata.get("creator"),
+                "file_handle": document_metadata.get("file_handle"),
+                "document_acl": document_metadata.get("document_acl"),
+                "deleter": document_metadata.get("deleter")
+            }
+    
     ###############################################################################
 
     data = encapsulate_session_data(
@@ -723,7 +721,7 @@ def create_document():
     current_app.sessions[session_id]['msg_id'] = msg_id
 
     ############################ Authorization ############################
-    permission_in_session = check_user_permission_in_session( "DOC_NEW", current_app.sessions[session_id], current_app.organization_db)
+    permission_in_session = check_user_permission_in_session(current_app.logger, "DOC_NEW", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
         response = {'error': 'User does not have a "DOC_NEW" permission to create a document'}
@@ -732,12 +730,17 @@ def create_document():
 
     ############################ Logic of the endpoint ############################
     encryption_file = plaintext.get("encryption_file")
-    current_app.logger.debug(f"document_acl: {plaintext.get('document_acl')}")
-    document_acl = plaintext.get("document_acl")
+    # current_app.logger.debug(f"document_acl: {plaintext.get('document_acl')}")
+    document_acl = {
+        "Managers": ["DOC_ACL", "DOC_READ", "DOC_DELETE"],
+        "zezinho": ["DOC_READ", "DOC_DELETE"]
+        # TODO: Same for all the assumed roles of the user? Wait by teacher response.
+    }
     file_handle_hex = plaintext.get("file_handle")
     name = plaintext.get("name")
     key_hex = plaintext.get("key")
     alg = plaintext.get("alg")
+
     
     encryption_file_bytes = base64.b64decode(encryption_file.encode("utf-8"))
     file_handle_bytes = bytes.fromhex(file_handle_hex)
@@ -821,7 +824,7 @@ def get_document_metadata():
     current_app.sessions[session_id]['msg_id'] = msg_id
 
     ############################ Authorization ############################
-    permission_in_session = check_user_permission_in_session( "DOC_READ", current_app.sessions[session_id], current_app.organization_db)
+    permission_in_session = check_user_permission_in_session(current_app.logger, "DOC_READ", current_app.sessions[session_id], current_app.organization_db)
 
     if permission_in_session == False:
         response = {'error': 'User does not have a "DOC_READ" permission to read a document'}
@@ -894,7 +897,7 @@ def delete_document():
     current_app.sessions[session_id]['msg_id'] = msg_id
 
     ############################ Authorization ############################
-    permission_in_session = check_user_permission_in_session( "DOC_DELETE", current_app.sessions[session_id], current_app.organization_db)
+    permission_in_session = check_user_permission_in_session(current_app.logger, "DOC_DELETE", current_app.sessions[session_id], current_app.organization_db)
     
     if permission_in_session == False:
         response = {'error': 'User does not have a "DOC_DELETE" permission to delete a document'}
@@ -967,7 +970,7 @@ def update_acl_doc():
     current_app.sessions[session_id]['msg_id'] = msg_id
 
     ############################ Authorization ############################
-    permission_in_session = check_user_permission_in_session( "DOC_ACL", current_app.sessions[session_id], current_app.organization_db )
+    permission_in_session = check_user_permission_in_session(current_app.logger, "DOC_ACL", current_app.sessions[session_id], current_app.organization_db )
 
     if permission_in_session == False:
         response = {'error': 'User does not have a "DOC_ACL" permission to change the ACL of a document'}

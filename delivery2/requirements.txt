@@ -2,4 +2,3 @@ requests
 cryptography
 flask
 pymongo
-pytest

@@ -151,8 +151,6 @@ class Auth(Command):
         response = requests.post(f'{self.server_address}/api/v1/auth/session', json={'associated_data': associated_data, 'signature': signature_hex})
 
         if response.status_code != 200:
-            print(response.text)
-            print(response)
             raise Exception(f'[{response.status_code}] Failed to create session. Response: {response.text}')
         
         # Get associated data
@@ -188,7 +186,7 @@ class Auth(Command):
             session_id = associated_data['session_id']
             
             with open(session_file, 'w') as f:
-                f.write(json.dumps({'session_id': session_id, 'organization': organization, 'username': username, 'derived_key': derived_key_hex, 'msg_id': 0}, indent=4))
+                f.write(json.dumps({'session_id': session_id, 'organization': organization, 'username': username, 'derived_key': derived_key_hex, 'msg_id': 0, 'roles': []}, indent=4))
                 
             self.logger.debug(f'Session created successfully and stored in file {session_file}')
 
@@ -278,13 +276,10 @@ class Session(Command):
         
         # Update the JSON data
         if "role" not in data:
-            data["role"] = role
+            data["role"] = [role]
         else:
             if role not in data["role"]:
-                if isinstance(data["role"], list):
-                    data["role"].append(role)
-                else:
-                    data["role"] = [data["role"], role]
+                data["role"].append(role)
 
         # Write the updated data back to the file
         with open(session_file, 'w') as f:
@@ -317,10 +312,7 @@ class Session(Command):
         # Update the JSON data
         if "role" in data:
             if role in data["role"]:
-                if isinstance(data["role"], list):
-                    data["role"].remove(role)
-                else:
-                    data["role"] = None
+                data["role"].remove(role)
 
         # Write the updated data back to the file
         with open(session_file, 'w') as f:
@@ -690,6 +682,9 @@ class Organization(Command):
         """This command adds a document with a given name to the organization with which I have currently a session. The document’s contents is provided as parameter with a file name. This commands requires a DOC_NEW permission."""
         # POST /api/v1/organizations/documents
         
+        print("Document name: ", document_name)
+        print("File: ", file)
+
         with open(file, 'rb') as f:
             file_content = f.read() 
         
@@ -706,7 +701,6 @@ class Organization(Command):
         endpoint = '/api/v1/organizations/documents'
         plaintext = {
             'encryption_file': encrypted_file,
-            'document_acl': {}, # TODO: check this (remove this line, put this logic on server side!)
             'file_handle': file_handle_hex,
             'name': document_name,
             'key': key.hex(),

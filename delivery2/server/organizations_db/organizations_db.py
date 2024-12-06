@@ -24,6 +24,17 @@ class OrganizationsDB:
     
     ### Subject Management ###
     def add_subject(self, organization_name, subject_name, subject_details):
+        organization = self.collection.find_one({"name": organization_name})
+
+        if not organization:
+            return None
+        
+        subjects = organization.get('subjects', {})
+
+        # Check if subject already exists, if so, return None
+        if subject_name in subjects:
+            return None
+
         result = self.collection.update_one(
             {"name": organization_name},
             {"$set": {f"subjects.{subject_name}": subject_details}}
@@ -35,6 +46,10 @@ class OrganizationsDB:
         return result.modified_count
     
     def delete_subject(self, organization_name, subject_name):
+                
+        if not self.collection.find_one({"name": organization_name, f"subjects.{subject_name}": {"$exists": True}}):
+            return None
+        
         result = self.collection.update_one(
             {"name": organization_name},
             {"$unset": {f"subjects.{subject_name}": ""}}
@@ -43,7 +58,7 @@ class OrganizationsDB:
         if not result:
             return None
 
-        return result.modified_count
+        return result.modified_count    
 
     def retrieve_subject(self, organization_name, subject_name):
         result = self.collection.find_one(
@@ -70,6 +85,10 @@ class OrganizationsDB:
         return result
 
     def update_subject(self, organization_name, subject_name, subject_data):
+        
+        if not self.collection.find_one({"name": organization_name, f"subjects.{subject_name}": {"$exists": True}}):
+            return None
+        
         result = self.collection.update_one(
             {"name": organization_name},
             {"$set": {f"subjects.{subject_name}": subject_data}}
@@ -89,7 +108,6 @@ class OrganizationsDB:
         
         roles = organization.get('roles', {})
 
-        # TODO: Check if role already exists, if so, return None
         if role_name in roles:
             return None
 
@@ -101,6 +119,10 @@ class OrganizationsDB:
         return result.modified_count 
 
     def delete_role(self, organization_name, role_name):
+        
+        if not self.collection.find_one({"name": organization_name, f"roles.{role_name}": {"$exists": True}}):
+            return None
+        
         result = self.collection.update_one(
             {"name": organization_name},
             {"$unset": {f"roles.{role_name}": ""}}
@@ -211,12 +233,9 @@ class OrganizationsDB:
         if not result:
             return None
         
-        logger.info("**********")
-
-        # Not sure if this is the correct way to do
+        # TODO: Not sure if this is the correct way to do
         documents_metadata = result.get('documents_metadata', {})
         for doc_meta in documents_metadata.values():
-            logger.info("!!!!!!")
             doc_acl = doc_meta.get('document_acl', {})
             logger.info(f"Document ACL: {doc_acl}")
             for acl_name, acl_permissions in doc_acl.items():
@@ -228,6 +247,10 @@ class OrganizationsDB:
         return permission_roles
 
     def update_role(self, organization_name, role_name, role_data):
+
+        if not self.collection.find_one({"name": organization_name, f"roles.{role_name}": {"$exists": True}}):
+            return None
+
         result = self.collection.update_one(
             {"name": organization_name},
             {"$set": {f"roles.{role_name}": role_data}}
@@ -241,6 +264,7 @@ class OrganizationsDB:
     def check_user_role(self, organization_name, username, role_name):
         """Check if a user is part of a specific role in an organization."""
         organization = self.collection.find_one({"name": organization_name})
+
         if not organization:
             return False
         
@@ -258,11 +282,14 @@ class OrganizationsDB:
             return False
         
         all_roles = organization.get('roles', {})
+        
+        # TODO: test
         # if role and permission in role.get('permissions', []):
         #     return True
         # for role in all_roles:
         #     if role and permission in role.get('permissions', []):
         #         return True
+        
         for role_session in roles_session:
             role_information = all_roles.get(role_session)
             if permission in role_information.get('permissions', []) and role_information.get('state') == 'active':
@@ -278,7 +305,7 @@ class OrganizationsDB:
             return False
         
         # Find the document with the given name
-        # TODO: quando criamos um documento, o "document_handle" deve ser um digest do "name" do documento
+        # TODO: Test. Quando criamos um documento, o "document_handle" deve ser um digest do "name" do documento
         document_handle = get_document_handle(organization_name, document_name) # TODO:
         document_acl = organization.get('documents_metadata', {}).get(document_handle, {}).get('document_acl', {})
 
@@ -293,8 +320,10 @@ class OrganizationsDB:
         # Returns the state of a role inside a previously fetched organization
         return organization.get('roles', {}).get(role_name, {}).get('state')
         
-
     def suspend_role(self, organization_name, role_name):
+        if not self.collection.find_one({"name": organization_name, f"roles.{role_name}": {"$exists": True}}):
+            return None
+
         result = self.collection.update_one(
             {"name": organization_name},
             {"$set": {f"roles.{role_name}.state": "suspended"}}
@@ -306,6 +335,9 @@ class OrganizationsDB:
         return result.modified_count
     
     def reactivate_role(self, organization_name, role_name):
+        if not self.collection.find_one({"name": organization_name, f"roles.{role_name}": {"$exists": True}}):
+            return None
+
         result = self.collection.update_one(
             {"name": organization_name},
             {"$set": {f"roles.{role_name}.state": "active"}}
@@ -317,6 +349,9 @@ class OrganizationsDB:
         return result.modified_count
     
     def add_permission_to_role(self, organization_name, role_name, permission):
+        if not self.collection.find_one({"name": organization_name, f"roles.{role_name}": {"$exists": True}}):
+            return None
+
         result = self.collection.update_one(
             {"name": organization_name},
             {"$push": {f"roles.{role_name}.permissions": permission}}
@@ -328,6 +363,9 @@ class OrganizationsDB:
         return result.modified_count
     
     def remove_permission_from_role(self, organization_name, role_name, permission):
+        if not self.collection.find_one({"name": organization_name, f"roles.{role_name}": {"$exists": True}}):
+            return None
+
         result = self.collection.update_one(
             {"name": organization_name},
             {"$pull": {f"roles.{role_name}.permissions": permission}}
@@ -339,6 +377,9 @@ class OrganizationsDB:
         return result.modified_count
 
     def add_subject_to_role(self, organization_name, role_name, subject):
+        if not self.collection.find_one({"name": organization_name, f"roles.{role_name}": {"$exists": True}}):
+            return None
+            
         result = self.collection.update_one(
             {"name": organization_name},
             {"$push": {f"roles.{role_name}.subjects": subject}}
@@ -350,6 +391,9 @@ class OrganizationsDB:
         return result.modified_count
     
     def remove_subject_from_role(self, organization_name, role_name, subject):
+        if not self.collection.find_one({"name": organization_name, f"roles.{role_name}": {"$exists": True}}):
+            return None
+        
         result = self.collection.update_one(
             {"name": organization_name},
             {"$pull": {f"roles.{role_name}.subjects": subject}}
@@ -365,6 +409,11 @@ class OrganizationsDB:
         return self.collection.find_one({"name": organization_name}) is not None
     
     def insert_organization(self, organization):
+        # Check if the organization already exists
+        
+        if self.in_database(organization.get("name")):
+            return None  # Organization already exists
+        
         return self.collection.insert_one(organization)
     
     def get_organization(self, organization_name):
@@ -386,6 +435,9 @@ class OrganizationsDB:
     ### Documents Metadata Management ###
 
     def insert_metadata(self, organization_name, document_handle, metadata_details):
+        if self.collection.find_one({"name": organization_name, f"documents_metadata.{document_handle}": {"$exists": True}}):
+            return None
+
         result = self.collection.update_one(
             {"name": organization_name},
             {"$set": {f"documents_metadata.{document_handle}": metadata_details}}
@@ -396,7 +448,7 @@ class OrganizationsDB:
 
         return result.modified_count
     
-    def get_metadata(self, organization_name, document_handle):
+    def get_metadata(self, organization_name, document_handle):       
         result = self.collection.find_one(
             {"name": organization_name},
             {"documents_metadata": {document_handle: 1}}
@@ -432,6 +484,8 @@ class OrganizationsDB:
         # # Return the document_handle along with its metadata
         # doc = result[0]["metadata"][0]
         # return {doc["k"]: doc["v"]}
+
+        # TODO: Test
 
         document_handle = get_document_handle(organization_name, document_name)
         
@@ -489,7 +543,12 @@ class OrganizationsDB:
         # # Return True if the update modified a document, otherwise False
         # return update_result.modified_count > 0
 
+        # TODO: Test
+
         document_handle = get_document_handle(organization_name, document_name)
+        
+        if not self.collection.find_one({"name": organization_name, f"documents_metadata.{document_handle}": {"$exists": True}}):
+            return None
         
         # Perform the soft delete by updating the document
         update_result = self.collection.update_one(
@@ -532,8 +591,14 @@ class OrganizationsDB:
     #     return result.modified_count
 
     def add_permission_to_document(self, organization_name, document_name, role_name, permission):
+        # TODO: Test
+
         # Add a permission for a given role.
-        document_handle = get_document_handle(organization_name, document_name) # TODO:
+        document_handle = get_document_handle(organization_name, document_name) # TODO: Test
+        
+        if not self.collection.find_one({"name": organization_name, f"documents_metadata.{document_handle}": {"$exists": True}}):
+            return None
+        
         result = self.collection.update_one(
             {"name": organization_name},
             {"$push": {f"documents_metadata.{document_handle}.document_acl.{role_name}": permission}}
@@ -545,8 +610,14 @@ class OrganizationsDB:
         return result.modified_count
     
     def remove_permission_from_document(self, organization_name, document_name, role_name, permission):
+        # TODO: Test
+        
         # Remove a permission for a given role.
         document_handle = get_document_handle(organization_name, document_name) # TODO:
+        
+        if not self.collection.find_one({"name": organization_name, f"documents_metadata.{document_handle}": {"$exists": True}}):
+            return None
+        
         result = self.collection.update_one(
             {"name": organization_name},
             {"$pull": {f"documents_metadata.{document_name}.document_acl.{role_name}": permission}}
@@ -560,7 +631,7 @@ class OrganizationsDB:
     def list_documents(self, organization_name, creator, date_filter, date_str):
         # This command lists the documents of the organization with which I have currently a session, 
         # possibly filtered by a subject that created them and by a date (newer than, older than, equal to), expressed in the DD-MM-YYYY format.
-
+        
         # Retrieve the organization's documents_metadata
         result = self.collection.find_one(
             {"name": organization_name},

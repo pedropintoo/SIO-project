@@ -1,6 +1,6 @@
 # api path: /api/v1/sessions/ 
 from . import session_bp
-from flask import request, jsonify, current_app
+from flask import request, jsonify, current_app, abort
 from server.organizations_db.organizations_db import OrganizationsDB
 from utils.session import decapsulate_session_data, encapsulate_session_data
 
@@ -21,7 +21,7 @@ def assume_session_role():
     if has_role == False:
         response = {'error': 'User does not have the role in the organization'}
     else:    
-        current_app.sessions[session_id]['role'] = plaintext_role
+        current_app.sessions[session_id]['roles'] = [plaintext_role]
 
         response = {
             'state': f'Role "{plaintext_role}" assumed successfully'
@@ -50,12 +50,12 @@ def drop_session_role():
     plaintext_role = plaintext.get('role')
 
     # Check in the database if the username has that role in that organization
-    has_role = current_app.organization_db.check_user_role(organization_name, username, plaintext_role)
+    has_role = plaintext_role in current_app.sessions[session_id].get('roles')
 
     if has_role == False:
         response = {'error': 'User does not have the role in the organization'}
     else:
-        current_app.sessions[session_id]['role'] = None
+        current_app.sessions[session_id]['roles'].remove(plaintext_role)
 
         response = {
             'state': f'Role "{plaintext_role}" dropped successfully'
@@ -83,9 +83,9 @@ def list_session_roles():
     current_app.sessions[session_id]['msg_id'] = msg_id
 
     ############################ Logic of the endpoint ############################
-    roles = current_app.sessions[session_id].get('role')
+    roles = current_app.sessions[session_id].get('roles')
 
-    current_app.logger.info(f'Roles in session: {current_app.sessions[session_id]["role"]}')
+    current_app.logger.info(f'Roles in session: {roles}')
 
     response = {
         'roles': roles

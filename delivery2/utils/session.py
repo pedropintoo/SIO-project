@@ -131,28 +131,34 @@ def send_session_data(logger, server_address, command, endpoint, session_file, p
 
     result = request_func(f'{server_address}{endpoint}', json={'associated_data': data["associated_data"], 'encrypted_data': data["encrypted_data"]})
 
-    if result.status_code != 200:
-        raise Exception(f'[{result.status_code}] Failed to execute default command: {endpoint}. Response: {result.error}')
-
     sessions = {session_id: {"msg_id": msg_id, "organization": organization, "derived_key": derived_key_hex, "username": usernameSession}}
     plaintext, _, _, msg_id, _, _ = decapsulate_session_data(json.loads(result.text), sessions)
+
+    if msg_id <= session['msg_id']:
+        raise Exception(f'Replay attack detected for session {session_id}')
 
     # Update session file
     with open(session_file, 'w') as f:
         session['msg_id'] = msg_id
         json.dump(session, f, indent=4)
+        
+    if result.status_code != 200:
+        raise Exception(f'[{result.status_code}] Failed to execute default command: {endpoint}. Response: {plaintext}')
 
     return plaintext
 
-def check_user_permission_in_session(permission, session, organization_db):
+def check_user_permission_in_session(logger, permission, session, organization_db):
     
-    if 'role' not in session:
+    if 'roles' not in session:
+        logger.error('Roles not found in session')
         return False
     
-    roles = session['role']
+    roles = session['roles']
     if roles is None:
+        logger.error('Roles not found in session')
         return False
 
+    logger.debug(f'Checking permission {permission} for roles {roles}')
     return organization_db.check_role_permission(session['organization'], roles, permission)
     
 def get_document_handle(organization_name, document_name):

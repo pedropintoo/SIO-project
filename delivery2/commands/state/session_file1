@@ -2,7 +2,10 @@
     "session_id": 1,
     "organization": "hackers",
     "username": "pmap",
-    "derived_key": "ae661720059a9e38e028b4eb00a4bccb63c3abcef4d5955debeaf514eb07a1dc",
-    "msg_id": 2,
-    "role": "Managers"
+    "derived_key": "282f60f49ed5096909874926bd6b759f6d0d57c5ef90c1293144c8d1eb2b57d6",
+    "msg_id": 8,
+    "roles": [],
+    "role": [
+        "Managers"
+    ]
 }
