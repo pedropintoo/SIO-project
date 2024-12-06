@@ -89,11 +89,159 @@ class OrganizationsDB:
             {"roles": 1}
         )
         return result
+    
+    def retrieve_role_subjects(self, organization_name, role_name):
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"roles": {role_name: 1}}
+        )
+        result = result.get('roles', {}).get(role_name, {}).get('subjects', [])
+        return result
+
+    def retrieve_subject_roles(self, organization_name, username):
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"roles": 1}
+        )
+        
+        if not result:
+            return []
+
+        all_roles = result.get('roles', {})
+
+        subject_roles = []
+        for role_name, role_data in all_roles.items():
+            if username in role_data.get('subjects', []):
+                subject_roles.append(role_name)
+            
+        return subject_roles
+    
+    def retrieve_role_permissions(self, organization_name, role_name):
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"roles": {role_name: 1}}
+        )
+        result = result.get('roles', {}).get(role_name, {}).get('permissions', [])
+        return result
+
+    def retrieve_permission_roles(self, logger, organization_name, permission):
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"roles": 1}
+        )
+        
+        if not result:
+            return []
+
+        all_roles = result.get('roles', {})
+
+        permission_roles = []
+        for role_name, role_data in all_roles.items():
+            if permission in role_data.get('permissions', []):
+                permission_roles.append(role_name)
+
+        # As roles can be used in documents’ ACLs to associate subjects to permissions, 
+        # this command should also list the roles per document that have the given permission.
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"documents_metadata": 1}
+        )
+
+        logger.info(f"Documents metadata: {result}")
+
+        if not result:
+            return permission_roles
+        
+        logger.info("**********")
+
+        # Not sure if this is the correct way to do
+        documents_metadata = result.get('documents_metadata', {})
+        for doc_meta in documents_metadata.values():
+            logger.info("!!!!!!")
+            doc_acl = doc_meta.get('document_acl', {})
+            logger.info(f"Document ACL: {doc_acl}")
+            for acl_name, acl_permissions in doc_acl.items():
+                logger.info(f"ACL: {acl_name}")
+                logger.info(f"ACL permissions: {acl_permissions}")
+                if permission in acl_permissions:
+                    permission_roles.append((doc_meta.get('name'), acl_name))
+
+        return permission_roles
 
     def update_role(self, organization_name, role_name, role_data):
         result = self.collection.update_one(
             {"name": organization_name},
             {"$set": {f"roles.{role_name}": role_data}}
+        )
+        return result.modified_count
+
+    def check_user_role(self, organization_name, username, role_name):
+        """Check if a user is part of a specific role in an organization."""
+        organization = self.collection.find_one({"name": organization_name})
+        if not organization:
+            return False
+        
+        role = organization.get('roles', {}).get(role_name)
+        if not role:
+            return False
+
+        return username in role.get('subjects', [])
+
+    def check_role_permission(self, organization_name, roles, permission):
+        """Check if any of the specified roles have the given permission in an organization."""
+        organization = self.collection.find_one({"name": organization_name})
+        
+        if not organization:
+            return False
+        
+        all_roles = organization.get('roles', {}).values()
+        # if role and permission in role.get('permissions', []):
+        #     return True
+        for role in all_roles:
+            if role and permission in role.get('permissions', []):
+                return True
+        
+        return False
+
+    def suspend_role(self, organization_name, role_name):
+        result = self.collection.update_one(
+            {"name": organization_name},
+            {"$set": {f"roles.{role_name}.state": "suspended"}}
+        )
+        return result.modified_count
+    
+    def reactivate_role(self, organization_name, role_name):
+        result = self.collection.update_one(
+            {"name": organization_name},
+            {"$set": {f"roles.{role_name}.state": "active"}}
+        )
+        return result.modified_count
+    
+    def add_permission_to_role(self, organization_name, role_name, permission):
+        result = self.collection.update_one(
+            {"name": organization_name},
+            {"$push": {f"roles.{role_name}.permissions": permission}}
+        )
+        return result.modified_count
+    
+    def remove_permission_from_role(self, organization_name, role_name, permission):
+        result = self.collection.update_one(
+            {"name": organization_name},
+            {"$pull": {f"roles.{role_name}.permissions": permission}}
+        )
+        return result.modified_count
+
+    def add_subject_to_role(self, organization_name, role_name, subject):
+        result = self.collection.update_one(
+            {"name": organization_name},
+            {"$push": {f"roles.{role_name}.subjects": subject}}
+        )
+        return result.modified_count
+    
+    def remove_subject_from_role(self, organization_name, role_name, subject):
+        result = self.collection.update_one(
+            {"name": organization_name},
+            {"$pull": {f"roles.{role_name}.subjects": subject}}
         )
         return result.modified_count
 
