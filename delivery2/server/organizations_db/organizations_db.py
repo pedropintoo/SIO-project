@@ -1,6 +1,7 @@
 import os
 from pymongo import MongoClient
 from datetime import datetime
+from utils.session import get_document_handle
 
 class OrganizationsDB:
     def __init__(self):
@@ -27,6 +28,10 @@ class OrganizationsDB:
             {"name": organization_name},
             {"$set": {f"subjects.{subject_name}": subject_details}}
         )
+
+        if not result:
+            return None
+
         return result.modified_count
     
     def delete_subject(self, organization_name, subject_name):
@@ -34,6 +39,10 @@ class OrganizationsDB:
             {"name": organization_name},
             {"$unset": {f"subjects.{subject_name}": ""}}
         )
+
+        if not result:
+            return None
+
         return result.modified_count
 
     def retrieve_subject(self, organization_name, subject_name):
@@ -42,6 +51,9 @@ class OrganizationsDB:
             {f"subjects.{subject_name}": 1}
         )
         
+        if not result:
+            return None
+
         result = result.get('subjects', {}).get(subject_name)
         return result
     
@@ -51,6 +63,9 @@ class OrganizationsDB:
             {"subjects": 1}
         )
         
+        if not result:
+            return None
+
         result = result.get('subjects', {})
         return result
 
@@ -59,14 +74,30 @@ class OrganizationsDB:
             {"name": organization_name},
             {"$set": {f"subjects.{subject_name}": subject_data}}
         )
+
+        if not result:
+            return None
+
         return result.modified_count
 
     ### Role Management ###
     def add_role(self, organization_name, role_name, role_details):
+        organization = self.collection.find_one({"name": organization_name})
+
+        if not organization:
+            return None
+        
+        roles = organization.get('roles', {})
+
+        # TODO: Check if role already exists, if so, return None
+        if role_name in roles:
+            return None
+
         result = self.collection.update_one(
             {"name": organization_name},
             {"$set": {f"roles.{role_name}": role_details}}
         )
+        
         return result.modified_count 
 
     def delete_role(self, organization_name, role_name):
@@ -74,6 +105,10 @@ class OrganizationsDB:
             {"name": organization_name},
             {"$unset": {f"roles.{role_name}": ""}}
         )
+
+        if not result:
+            return None
+
         return result.modified_count
 
     def retrieve_role(self, organization_name, role_name):
@@ -81,6 +116,10 @@ class OrganizationsDB:
             {"name": organization_name},
             {"roles": {role_name: 1}}
         )
+
+        if not result:
+            return None
+
         return result
     
     def retrieve_roles(self, organization_name):
@@ -88,6 +127,10 @@ class OrganizationsDB:
             {"name": organization_name},
             {"roles": 1}
         )
+
+        if not result:
+            return None
+
         return result
     
     def retrieve_role_subjects(self, organization_name, role_name):
@@ -95,7 +138,15 @@ class OrganizationsDB:
             {"name": organization_name},
             {"roles": {role_name: 1}}
         )
+
+        if not result:
+            return None
+
         result = result.get('roles', {}).get(role_name, {}).get('subjects', [])
+        
+        if not result:
+            return None
+
         return result
 
     def retrieve_subject_roles(self, organization_name, username):
@@ -105,7 +156,7 @@ class OrganizationsDB:
         )
         
         if not result:
-            return []
+            return None
 
         all_roles = result.get('roles', {})
 
@@ -121,7 +172,15 @@ class OrganizationsDB:
             {"name": organization_name},
             {"roles": {role_name: 1}}
         )
+
+        if not result:
+            return None
+
         result = result.get('roles', {}).get(role_name, {}).get('permissions', [])
+        
+        if not result:
+            return None
+
         return result
 
     def retrieve_permission_roles(self, logger, organization_name, permission):
@@ -131,7 +190,7 @@ class OrganizationsDB:
         )
         
         if not result:
-            return []
+            return None
 
         all_roles = result.get('roles', {})
 
@@ -150,7 +209,7 @@ class OrganizationsDB:
         logger.info(f"Documents metadata: {result}")
 
         if not result:
-            return permission_roles
+            return None
         
         logger.info("**********")
 
@@ -173,6 +232,10 @@ class OrganizationsDB:
             {"name": organization_name},
             {"$set": {f"roles.{role_name}": role_data}}
         )
+
+        if not result:
+            return None
+
         return result.modified_count
 
     def check_user_role(self, organization_name, username, role_name):
@@ -194,25 +257,52 @@ class OrganizationsDB:
         if not organization:
             return False
         
-        all_roles = organization.get('roles', {}).values()
+        all_roles = organization.get('roles', {})
         # if role and permission in role.get('permissions', []):
         #     return True
         # for role in all_roles:
         #     if role and permission in role.get('permissions', []):
         #         return True
         for role_session in roles_session:
-
-        
+            role_information = all_roles.get(role_session)
+            if permission in role_information.get('permissions', []) and role_information.get('state') == 'active':
+                return True
+            
         return False
 
-    def check_role_permission_document(self, organization_name, roles, document_name, permission):
-        ...
+    def check_role_permission_document(self, organization_name, roles_session, document_name, permission):
+        """Check in documents_metadata if the role in document_acl has the given permission in an organization."""
+        organization = self.collection.find_one({"name": organization_name})
+        
+        if not organization:
+            return False
+        
+        # Find the document with the given name
+        # TODO: quando criamos um documento, o "document_handle" deve ser um digest do "name" do documento
+        document_handle = get_document_handle(organization_name, document_name) # TODO:
+        document_acl = organization.get('documents_metadata', {}).get(document_handle, {}).get('document_acl', {})
+
+        for role_session in roles_session:
+            role_permissions = document_acl.get(role_session, [])
+            if permission in role_permissions and self.role_state(organization, role_session) == 'active':
+                return True
+        return False
+    
+    # Auxiliary function
+    def role_state(self, organization, role_name):
+        # Returns the state of a role inside a previously fetched organization
+        return organization.get('roles', {}).get(role_name, {}).get('state')
+        
 
     def suspend_role(self, organization_name, role_name):
         result = self.collection.update_one(
             {"name": organization_name},
             {"$set": {f"roles.{role_name}.state": "suspended"}}
         )
+
+        if not result:
+            return None
+
         return result.modified_count
     
     def reactivate_role(self, organization_name, role_name):
@@ -220,6 +310,10 @@ class OrganizationsDB:
             {"name": organization_name},
             {"$set": {f"roles.{role_name}.state": "active"}}
         )
+
+        if not result:
+            return None
+
         return result.modified_count
     
     def add_permission_to_role(self, organization_name, role_name, permission):
@@ -227,6 +321,10 @@ class OrganizationsDB:
             {"name": organization_name},
             {"$push": {f"roles.{role_name}.permissions": permission}}
         )
+
+        if not result:
+            return None
+
         return result.modified_count
     
     def remove_permission_from_role(self, organization_name, role_name, permission):
@@ -234,6 +332,10 @@ class OrganizationsDB:
             {"name": organization_name},
             {"$pull": {f"roles.{role_name}.permissions": permission}}
         )
+
+        if not result:
+            return None
+
         return result.modified_count
 
     def add_subject_to_role(self, organization_name, role_name, subject):
@@ -241,6 +343,10 @@ class OrganizationsDB:
             {"name": organization_name},
             {"$push": {f"roles.{role_name}.subjects": subject}}
         )
+
+        if not result:
+            return None
+
         return result.modified_count
     
     def remove_subject_from_role(self, organization_name, role_name, subject):
@@ -248,6 +354,10 @@ class OrganizationsDB:
             {"name": organization_name},
             {"$pull": {f"roles.{role_name}.subjects": subject}}
         )
+
+        if not result:
+            return None
+
         return result.modified_count
 
     ### Organization Management ###
@@ -258,8 +368,11 @@ class OrganizationsDB:
         return self.collection.insert_one(organization)
     
     def get_organization(self, organization_name):
-        return self.collection.find_one({"name": organization_name})
-    
+        result = self.collection.find_one({"name": organization_name})
+        if not result:
+            return None
+        return result
+
     def get_all_organizations(self):
         cursor = self.collection.find()
     
@@ -277,6 +390,10 @@ class OrganizationsDB:
             {"name": organization_name},
             {"$set": {f"documents_metadata.{document_handle}": metadata_details}}
         )
+
+        if not result:
+            return None
+
         return result.modified_count
     
     def get_metadata(self, organization_name, document_handle):
@@ -284,64 +401,99 @@ class OrganizationsDB:
             {"name": organization_name},
             {"documents_metadata": {document_handle: 1}}
         )
+
+        if not result:
+            return None
+
         return result
 
     def get_metadata_by_document_name(self, organization_name, document_name):
         # Use an aggregation pipeline to find the document with the given name
-        pipeline = [
-            {"$match": {"name": organization_name}},  # Match the organization
-            {
-                "$project": {
-                    "metadata": {
-                        "$filter": {
-                            "input": {"$objectToArray": "$documents_metadata"},  # Convert documents_metadata to an array
-                            "as": "doc",
-                            "cond": {"$eq": ["$$doc.v.name", document_name]}  # Match the document name
-                        }
-                    }
-                }
-            }
-        ]
+        # pipeline = [
+        #     {"$match": {"name": organization_name}},  # Match the organization
+        #     {
+        #         "$project": {
+        #             "metadata": {
+        #                 "$filter": {
+        #                     "input": {"$objectToArray": "$documents_metadata"},  # Convert documents_metadata to an array
+        #                     "as": "doc",
+        #                     "cond": {"$eq": ["$$doc.v.name", document_name]}  # Match the document name
+        #                 }
+        #             }
+        #         }
+        #     }
+        # ]
 
-        result = list(self.collection.aggregate(pipeline))
+        # result = list(self.collection.aggregate(pipeline))
 
-        if not result or not result[0]["metadata"]:
-            return None  # Organization or document not found
+        # if not result or not result[0]["metadata"]:
+        #     return None  # Organization or document not found
 
+        # # Return the document_handle along with its metadata
+        # doc = result[0]["metadata"][0]
+        # return {doc["k"]: doc["v"]}
+
+        document_handle = get_document_handle(organization_name, document_name)
+        
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"documents_metadata": {document_handle: 1}}
+        )
+
+        if not result or not result.get('documents_metadata'):
+            return None
+        
         # Return the document_handle along with its metadata
-        doc = result[0]["metadata"][0]
-        return {doc["k"]: doc["v"]}
+        doc = result["documents_metadata"][document_handle]
+        return {document_handle: doc}
+
 
     def delete_metadata(self, organization_name, document_name, subject):
-        """Soft delete metadata by setting 'deleter' and 'file_handle' to None"""
+        # """Soft delete metadata by setting 'deleter' and 'file_handle' to None"""
 
-        print("organization_name", organization_name)
-        pipeline = [
-            {"$match": {"name": organization_name}},  # Match the organization
-            {
-                "$project": {
-                    "metadata": {
-                        "$filter": {
-                            "input": {"$objectToArray": "$documents_metadata"},  # Convert documents_metadata to an array
-                            "as": "doc",
-                            "cond": {"$eq": ["$$doc.v.name", document_name]}  # Match the document name
-                        }
-                    }
-                }
-            }
-        ]
+        # print("organization_name", organization_name)
+        # pipeline = [
+        #     {"$match": {"name": organization_name}},  # Match the organization
+        #     {
+        #         "$project": {
+        #             "metadata": {
+        #                 "$filter": {
+        #                     "input": {"$objectToArray": "$documents_metadata"},  # Convert documents_metadata to an array
+        #                     "as": "doc",
+        #                     "cond": {"$eq": ["$$doc.v.name", document_name]}  # Match the document name
+        #                 }
+        #             }
+        #         }
+        #     }
+        # ]
 
-        result = list(self.collection.aggregate(pipeline))
+        # result = list(self.collection.aggregate(pipeline))
 
-        if not result or not result[0]["metadata"]:
-            return False  # Organization or document not found
+        # if not result or not result[0]["metadata"]:
+        #     return False  # Organization or document not found
 
-        # Extract the document handle
-        document_handle = result[0]["metadata"][0]["k"]
+        # # Extract the document handle
+        # document_handle = result[0]["metadata"][0]["k"]
 
+        # # Perform the soft delete by updating the document
+        # update_result = self.collection.update_one(
+        #     {"name": organization_name},  # Match the organization
+        #     {
+        #         "$set": {
+        #             f"documents_metadata.{document_handle}.deleter": subject,
+        #             f"documents_metadata.{document_handle}.file_handle": None,
+        #         }
+        #     }
+        # )
+
+        # # Return True if the update modified a document, otherwise False
+        # return update_result.modified_count > 0
+
+        document_handle = get_document_handle(organization_name, document_name)
+        
         # Perform the soft delete by updating the document
         update_result = self.collection.update_one(
-            {"name": organization_name},  # Match the organization
+            {"name": organization_name},
             {
                 "$set": {
                     f"documents_metadata.{document_handle}.deleter": subject,
@@ -350,8 +502,12 @@ class OrganizationsDB:
             }
         )
 
-        # Return True if the update modified a document, otherwise False
+        if not update_result:
+            return None
+
         return update_result.modified_count > 0
+
+
 
     # def update_acl(self, organization_name, document_name, new_acl):
          
@@ -377,25 +533,33 @@ class OrganizationsDB:
 
     def add_permission_to_document(self, organization_name, document_name, role_name, permission):
         # Add a permission for a given role.
+        document_handle = get_document_handle(organization_name, document_name) # TODO:
         result = self.collection.update_one(
             {"name": organization_name},
-            {"$push": {f"documents_metadata.{document_name}.document_acl.{role_name}": permission}}
+            {"$push": {f"documents_metadata.{document_handle}.document_acl.{role_name}": permission}}
         )
+
+        if not result:
+            return None
+
         return result.modified_count
     
     def remove_permission_from_document(self, organization_name, document_name, role_name, permission):
         # Remove a permission for a given role.
+        document_handle = get_document_handle(organization_name, document_name) # TODO:
         result = self.collection.update_one(
             {"name": organization_name},
             {"$pull": {f"documents_metadata.{document_name}.document_acl.{role_name}": permission}}
         )
+
+        if not result:
+            return None
+
         return result.modified_count
     
     def list_documents(self, organization_name, creator, date_filter, date_str):
         # This command lists the documents of the organization with which I have currently a session, 
         # possibly filtered by a subject that created them and by a date (newer than, older than, equal to), expressed in the DD-MM-YYYY format.
-
-        # TODO: try to do the query immediately
 
         # Retrieve the organization's documents_metadata
         result = self.collection.find_one(
@@ -404,7 +568,7 @@ class OrganizationsDB:
         )
 
         if not result:
-            return []
+            return None
 
         documents_metadata = result.get('documents_metadata', {})
         documents_list = []

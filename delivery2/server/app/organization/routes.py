@@ -3,7 +3,7 @@ from . import organization_bp
 from flask import jsonify, request, current_app
 from server.organizations_db.organizations_db import OrganizationsDB
 from utils import symmetric
-from utils.session import encapsulate_session_data, decapsulate_session_data, session_info_from_file, check_user_permission_in_session
+from utils.session import encapsulate_session_data, decapsulate_session_data, session_info_from_file, check_user_permission_in_session, get_document_handle, get_document_handle
 from cryptography.exceptions import InvalidTag
 import json
 import logging
@@ -33,6 +33,11 @@ def list_role_subjects():
     plaintext_role = plaintext.get("role")
 
     role_subjects = current_app.organization_db.retrieve_role_subjects(organization, plaintext_role)
+    
+    if not role_subjects:
+        response = {'error': f'Role "{plaintext_role}" not found in organization "{organization}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 404
 
     response = {
         "role_subjects": role_subjects
@@ -62,6 +67,11 @@ def list_role_permissions():
     plaintext_role = plaintext.get("role")
 
     role_permissions = current_app.organization_db.retrieve_role_permissions(organization, plaintext_role)
+    
+    if not role_permissions:
+        response = {'error': f'Role "{plaintext_role}" not found in organization "{organization}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 404
 
     response = {
         "role_permissions": role_permissions
@@ -103,7 +113,12 @@ def add_role():
         'permissions': []
     }
 
-    current_app.organization_db.add_role(organization_name, plaintext_role, role_details)
+    r = current_app.organization_db.add_role(organization_name, plaintext_role, role_details)
+    
+    if not r:
+        response = {'error': f'Role "{plaintext_role}" already exists in organization "{organization_name}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 409
 
     response = {
         'state': f'Role "{plaintext_role}" added to organization "{organization_name}" successfully'
@@ -199,6 +214,11 @@ def suspend_role():
     plaintext_role = plaintext.get("role")
 
     role_data = current_app.organization_db.suspend_role(organization, plaintext_role)
+    
+    if not role_data:
+        response = {'error': f'Role "{plaintext_role}" not found in organization "{organization}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 404
 
     response = {
         'state': f'Role "{plaintext_role}" suspended in organization "{organization}"'
@@ -236,6 +256,11 @@ def reactivate_role():
     plaintext_role = plaintext.get("role")
 
     role_data = current_app.organization_db.reactivate_role(organization, plaintext_role)
+    
+    if not role_data:
+        response = {'error': f'Role "{plaintext_role}" not found in organization "{organization}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 404
 
     response = {
         'state': f'Role "{plaintext_role}" reactivate in organization "{organization}"'
@@ -273,7 +298,12 @@ def add_permission_to_role():
     plaintext_role = plaintext.get("role")
     plaintext_permission = plaintext.get("permission")
 
-    current_app.organization_db.add_permission_to_role(organization, plaintext_role, plaintext_permission)
+    r = current_app.organization_db.add_permission_to_role(organization, plaintext_role, plaintext_permission)
+    
+    if not r:
+        response = {'error': f'Permission "{plaintext_permission}" already exists in role "{plaintext_role}" in organization "{organization}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 409
 
     response = {
         'state': f'Permission "{plaintext_permission}" added to role "{plaintext_role}" in organization "{organization}"'
@@ -311,7 +341,12 @@ def remove_permission_from_role():
     plaintext_role = plaintext.get("role")
     plaintext_permission = plaintext.get("permission")
 
-    current_app.organization_db.remove_permission_from_role(organization, plaintext_role, plaintext_permission)
+    r = current_app.organization_db.remove_permission_from_role(organization, plaintext_role, plaintext_permission)
+    
+    if not r:
+        response = {'error': f'Permission "{plaintext_permission}" not found in role "{plaintext_role}" in organization "{organization}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 404
 
     response = {
         'state': f'Permission "{plaintext_permission}" removed from role "{plaintext_role}" in organization "{organization}"'
@@ -349,7 +384,12 @@ def add_subject_to_role():
     plaintext_role = plaintext.get("role")
     plaintext_subject = plaintext.get("username")
 
-    current_app.organization_db.add_subject_to_role(organization, plaintext_role, plaintext_subject)
+    r = current_app.organization_db.add_subject_to_role(organization, plaintext_role, plaintext_subject)
+    
+    if not r:
+        response = {'error': f'Subject "{plaintext_subject}" already exists in role "{plaintext_role}" in organization "{organization}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 409
 
     response = {
         'state': f'Subject "{plaintext_subject}" added to role "{plaintext_role}" in organization "{organization}"'
@@ -387,7 +427,12 @@ def remove_subject_from_role():
     plaintext_role = plaintext.get("role")
     plaintext_subject = plaintext.get("username")
 
-    current_app.organization_db.remove_subject_from_role(organization, plaintext_role, plaintext_subject)
+    r = current_app.organization_db.remove_subject_from_role(organization, plaintext_role, plaintext_subject)
+    
+    if not r:
+        response = {'error': f'Subject "{plaintext_subject}" not found in role "{plaintext_role}" in organization "{organization}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 404
 
     response = {
         'state': f'Subject "{plaintext_subject}" removed from role "{plaintext_role}" in organization "{organization}"'
@@ -433,7 +478,14 @@ def add_subject():
         'public_key': plaintext_public_key,
         'state': "active"
     }
-    current_app.organization_db.add_subject(organization_name, plaintext_username, subject_details)
+    
+    r = current_app.organization_db.add_subject(organization_name, plaintext_username, subject_details)
+    
+    if not r:
+        response = {'error': f'Subject "{plaintext_username}" already exists in organization "{organization_name}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 409
+    
     response = {
         'state': f'Subject "{plaintext_username}" added to organization "{organization_name}" successfully'
     }
@@ -461,6 +513,11 @@ def list_subject_roles():
     plaintext_username = plaintext.get("username")
 
     subject_roles = current_app.organization_db.retrieve_subject_roles(organization, plaintext_username)
+    
+    if not subject_roles:
+        response = {'error': f'Subject "{plaintext_username}" not found in organization "{organization}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 404
 
     response = {
         "subject_roles": subject_roles
@@ -502,7 +559,13 @@ def update_subject_state():
     
     subject_data["state"] = plaintext_state
     
-    current_app.organization_db.update_subject(organization_name, plaintext_username, subject_data)
+    r = current_app.organization_db.update_subject(organization_name, plaintext_username, subject_data)
+    
+    if not r:
+        response = {'error': f'Failed to update state of subject "{plaintext_username}" in organization "{organization_name}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 500
+    
     response = {
         'state': f'Subject "{plaintext_username}" state updated to "{subject_data["state"]}" in organization "{organization_name}"'
     }
@@ -544,9 +607,20 @@ def list_all_subjects_state():
     plaintext_username = plaintext.get("username")
     if plaintext_username:
         new_plaintext = current_app.organization_db.retrieve_subject(organization, plaintext_username)
+        
+        if not new_plaintext:
+            response = {'error': f'Subject "{plaintext_username}" not found in organization "{organization}"'}
+            data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+            return jsonify(data), 404
+        
         new_plaintext = {plaintext_username: new_plaintext.get('state')}
     else:
         result = current_app.organization_db.retrieve_subjects(organization)
+        
+        if not result:
+            response = {'error': 'No subjects found in organization'}
+            data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+            return jsonify(data), 404
         
         new_plaintext = {}
         for username, subject_data in result.items():
@@ -576,6 +650,11 @@ def list_permission_roles():
     plaintext_permission = plaintext.get("permission")
 
     permission_roles = current_app.organization_db.retrieve_permission_roles(current_app.logger, organization, plaintext_permission)
+    
+    if permission_roles == None:
+        response = {'error': f'Permission "{plaintext_permission}" not found in organization "{organization}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 404
 
     response = {
         "permission_roles": permission_roles
@@ -607,6 +686,11 @@ def list_documents():
     date_str = plaintext.get("date_str")
     
     metadata = current_app.organization_db.list_documents(organization, creator, date_filter, date_str)
+    
+    if not metadata:
+        response = {'error': 'No documents found'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 404
     
     new_plaintext = {}
     for obj in metadata:
@@ -701,8 +785,14 @@ def create_document():
         "key_nonce": key_nonce.hex(),
     } 
     
-    document_handle = ObjectId()
-    current_app.organization_db.insert_metadata(organization_name, document_handle, document_metadata)
+    document_handle = get_document_handle(organization_name, name)
+    
+    r = current_app.organization_db.insert_metadata(organization_name, document_handle, document_metadata)
+    
+    if not r:
+        response = {'error': f'Document "{name}" already exists in organization "{organization_name}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 409
 
     with open(f"{current_app.files_location}{file_handle_hex}", "wb") as file:
         file.write(encryption_file_bytes)
@@ -741,6 +831,12 @@ def get_document_metadata():
     ############################ Logic of the endpoint ############################
     document_name = plaintext.get("document_name")
     metadata = current_app.organization_db.get_metadata_by_document_name(organization, document_name)
+    
+    if not metadata:
+        response = {'error': f'Document "{document_name}" not found in organization "{organization}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 404
+    
     document_handle, all_metadata = next(iter(metadata.items()))
 
     stored_key = bytes.fromhex(all_metadata.get("key"))
@@ -808,9 +904,20 @@ def delete_document():
     ############################ Logic of the endpoint ############################
     document_name = plaintext.get("document_name")
     metadata = current_app.organization_db.get_metadata_by_document_name(organization, document_name)
+    
+    if not metadata:
+        response = {'error': f'Document "{document_name}" not found in organization "{organization}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 404
+    
     document_handle, all_metadata = next(iter(metadata.items()))
     
-    current_app.organization_db.delete_metadata(organization, document_name, username)
+    r = current_app.organization_db.delete_metadata(organization, document_name, username)
+    
+    if not r:
+        response = {'error': f'Document "{document_name}" already deleted in organization "{organization}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 409
 
     stored_key = bytes.fromhex(all_metadata.get("key"))
     stored_key_salt = bytes.fromhex(all_metadata.get("key_salt"))
@@ -874,9 +981,20 @@ def update_acl_doc():
     plaintext_permission = plaintext.get("permission")
 
     if plaintext_operation == "+":
-        current_app.organization_db.add_permission_to_document(organization, plaintext_document_name, plaintext_role, plaintext_permission)
+        r = current_app.organization_db.add_permission_to_document(organization, plaintext_document_name, plaintext_role, plaintext_permission)
+        
+        if not r:
+            response = {'error': f'Permission "{plaintext_permission}" already exists in document "{plaintext_document_name}" in organization "{organization}"'}
+            data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+            return jsonify(data), 409
+        
     elif plaintext_operation == "-":
-        current_app.organization_db.remove_permission_from_document(organization, plaintext_document_name, plaintext_role, plaintext_permission)
+        r = current_app.organization_db.remove_permission_from_document(organization, plaintext_document_name, plaintext_role, plaintext_permission)
+        
+        if not r:
+            response = {'error': f'Permission "{plaintext_permission}" does not exist in document "{plaintext_document_name}" in organization "{organization}"'}
+            data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+            return jsonify(data), 409
     else:
         response = {'error': 'Invalid operation. Operation must be "+" or "-"'}
 

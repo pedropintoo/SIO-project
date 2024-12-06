@@ -19,11 +19,7 @@ def create_organization():
         return jsonify({'error': 'Missing required fields'}), 400
 
     organization_name, username, name, email, public_key = [data[field] for field in required_fields]
-    
-    # Use method in_database to check if organization already exists
-    if current_app.organization_db.in_database(organization_name):
-        return jsonify({'error': 'Organization already exists'}), 400
-    
+        
     organization = {
         "name": organization_name,  
         "subjects": {
@@ -48,7 +44,10 @@ def create_organization():
         "documents_metadata": {} 
     }
     
-    current_app.organization_db.insert_organization(organization)
+    r = current_app.organization_db.insert_organization(organization)
+    
+    if not r:
+        return jsonify({'error': 'Organization already exists'}), 400
         
     password = current_app.MASTER_KEY.encode("utf-8")
     secret_key = ec.derive_private_key(int.from_bytes(password, 'big'), current_app.EC_CURVE, default_backend())

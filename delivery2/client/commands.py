@@ -151,7 +151,9 @@ class Auth(Command):
         response = requests.post(f'{self.server_address}/api/v1/auth/session', json={'associated_data': associated_data, 'signature': signature_hex})
 
         if response.status_code != 200:
-            raise Exception(f'[response.status_code] Failed to create session. Response: {response.text}')
+            print(response.text)
+            print(response)
+            raise Exception(f'[{response.status_code}] Failed to create session. Response: {response.text}')
         
         # Get associated data
         associated_data_string = response.json()['associated_data']
@@ -689,7 +691,7 @@ class Organization(Command):
         # POST /api/v1/organizations/documents
         
         with open(file, 'rb') as f:
-            file_content = f.read()
+            file_content = f.read() 
         
         digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
         digest.update(file_content)
