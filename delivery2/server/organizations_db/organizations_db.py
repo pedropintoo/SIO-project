@@ -274,45 +274,44 @@ class OrganizationsDB:
 
         return username in role.get('subjects', [])
 
-    def check_role_permission(self, organization_name, roles_session, permission):
+    def check_role_permission(self, session, permission):
         """Check if any of the specified roles have the given permission in an organization."""
+        username, organization_name, roles_session = session['username'], session['organization'], session['roles']  
+        
         organization = self.collection.find_one({"name": organization_name})
         
         if not organization:
-            return False
+            return False  
         
         all_roles = organization.get('roles', {})
-        
-        # TODO: test
-        # if role and permission in role.get('permissions', []):
-        #     return True
-        # for role in all_roles:
-        #     if role and permission in role.get('permissions', []):
-        #         return True
-        
+                
         for role_session in roles_session:
             role_information = all_roles.get(role_session)
-            if permission in role_information.get('permissions', []) and role_information.get('state') == 'active':
+            if permission in role_information.get('permissions', []) and role_information.get('state') == 'active' and username in role_information.get('subjects', []):
                 return True
             
         return False
 
-    def check_role_permission_document(self, organization_name, roles_session, document_name, permission):
+    def check_role_permission_document(self, session, document_name, permission):
         """Check in documents_metadata if the role in document_acl has the given permission in an organization."""
+        username, organization_name, roles_session = session['username'], session['organization'], session['roles']
+        
         organization = self.collection.find_one({"name": organization_name})
         
         if not organization:
             return False
-        
-        # Find the document with the given name
-        # TODO: Test. Quando criamos um documento, o "document_handle" deve ser um digest do "name" do documento
-        document_handle = get_document_handle(organization_name, document_name) # TODO:
+
+        document_handle = get_document_handle(organization_name, document_name)
         document_acl = organization.get('documents_metadata', {}).get(document_handle, {}).get('document_acl', {})
 
+        all_roles = organization.get('roles', {})
+
         for role_session in roles_session:
+            role_information = all_roles.get(role_session)
             role_permissions = document_acl.get(role_session, [])
-            if permission in role_permissions and self.role_state(organization, role_session) == 'active':
+            if permission in role_permissions and role_information.get('state') == 'active' and username in role_information.get('subjects', []):
                 return True
+                
         return False
     
     # Auxiliary function

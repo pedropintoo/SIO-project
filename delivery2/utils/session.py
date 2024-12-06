@@ -146,21 +146,8 @@ def send_session_data(logger, server_address, command, endpoint, session_file, p
         raise Exception(f'[{result.status_code}] Failed to execute default command: {endpoint}. Response: {plaintext}')
 
     return plaintext
+ 
 
-def check_user_permission_in_session(logger, permission, session, organization_db):
-    
-    if 'roles' not in session:
-        logger.error('Roles not found in session')
-        return False
-    
-    roles = session['roles']
-    if roles is None:
-        logger.error('Roles not found in session')
-        return False
-
-    logger.debug(f'Checking permission {permission} for roles {roles}')
-    return organization_db.check_role_permission(session['organization'], roles, permission)
-    
 def get_document_handle(organization_name, document_name):
     """ Returns the document handle, i.e. a digest, for the given organization and document name. """  
     concatenated = (organization_name + document_name).encode('utf-8')

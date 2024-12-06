@@ -5,7 +5,6 @@ import os
 import sys
 from utils import symmetric
 from utils.session import send_session_data, encapsulate_session_data, decapsulate_session_data, session_info_from_file
-from views.roles import DocumentPermissions
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -14,6 +13,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.exceptions import InvalidSignature, InvalidTag
 
 EC_CURVE = ec.SECP256R1()
+PERMISSIONS = {"ROLE_NEW", "ROLE_DOWN", "ROLE_UP", "ROLE_MOD", "ROLE_ACL", "SUBJECT_NEW", "SUBJECT_DOWN", "SUBJECT_UP", "DOC_NEW"}
 
 class Command:
     def __init__(self, logger, state):
@@ -275,11 +275,8 @@ class Session(Command):
             data = json.load(f)
         
         # Update the JSON data
-        if "role" not in data:
-            data["role"] = [role]
-        else:
-            if role not in data["role"]:
-                data["role"].append(role)
+        if role not in data["roles"]:
+            data["roles"].append(role)
 
         # Write the updated data back to the file
         with open(session_file, 'w') as f:
@@ -310,9 +307,9 @@ class Session(Command):
             data = json.load(f)
 
         # Update the JSON data
-        if "role" in data:
-            if role in data["role"]:
-                data["role"].remove(role)
+        if "roles" in data:
+            if role in data["roles"]:
+                data["roles"].remove(role)
 
         # Write the updated data back to the file
         with open(session_file, 'w') as f:
@@ -624,7 +621,7 @@ class Organization(Command):
         # print("DEBUG: permissionOrUsername", permissionOrUsername)
         # print("DEBUG: DocumentPermissions values: ", [perm.value for perm in DocumentPermissions])
 
-        if permissionOrUsername in [perm.value for perm in DocumentPermissions]:
+        if permissionOrUsername in PERMISSIONS:
             # print("DEBUG: permissionOrUsername is a permission")
             command = 'post'
             endpoint = f'/api/v1/organizations/roles/permissions'
@@ -656,8 +653,8 @@ class Organization(Command):
             # return requests.delete(f'{self.server_address}/api/v1/organizations/roles/{role}/permissions', json={'session': session, 'permission': permissionOrUsername})
         # else:
             # return requests.delete(f'{self.server_address}/api/v1/organizations/roles/{role}/subjects', json={'session': session, 'username': permissionOrUsername})
-
-        if permissionOrUsername in [perm.value for perm in DocumentPermissions]:
+            
+        if permissionOrUsername in PERMISSIONS:
             command = 'delete'
             endpoint = f'/api/v1/organizations/roles/permissions'
             plaintext = {'role': role, 'permission': permissionOrUsername}

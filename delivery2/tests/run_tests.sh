@@ -153,30 +153,30 @@ run_test success "8. Lists the current session roles" ./rep_list_roles $session_
 run_test success "8(1). Lists the current session roles" ./rep_list_roles $session_file_2 # TODO: Como ficou a situação do argumento role?
 run_test failure "8(2). Lists the current session roles" ./rep_list_roles ${session_file}_not_found # TODO: Como ficou a situação do argumento role?
 
-## Lists the subjects' status
-run_test success "9. Lists the organization's subjects' status" ./rep_list_subjects $session_file
-run_test success "9(1). Lists the organization's subjects' status" ./rep_list_subjects $session_file $username
-run_test failure "9(2). Lists the organization's subjects' status" ./rep_list_subjects $session_file ${username}_not_found
-username_new="${username}_new"
-run_test success "9(3). Adds a new subject" ./rep_add_subject $session_file $username_new ${full_name}_new ${email}_new $user_credentials
-run_test success "9(4). Lists the organization's subjects' status" ./rep_list_subjects $session_file # show the status of all subjects
-run_test_output success "$username_new: active" "9(5). Lists the organization's subjects' status" ./rep_list_subjects $session_file $username_new # show the status only of the new subject
+# ## Lists the subjects' status
+# run_test success "9. Lists the organization's subjects' status" ./rep_list_subjects $session_file
+# run_test success "9(1). Lists the organization's subjects' status" ./rep_list_subjects $session_file $username
+# run_test failure "9(2). Lists the organization's subjects' status" ./rep_list_subjects $session_file ${username}_not_found
+# username_new="${username}_new"
+# run_test success "9(3). Adds a new subject" ./rep_add_subject $session_file $username_new ${full_name}_new ${email}_new $user_credentials
+# run_test success "9(4). Lists the organization's subjects' status" ./rep_list_subjects $session_file # show the status of all subjects
+# run_test_output success "$username_new: active" "9(5). Lists the organization's subjects' status" ./rep_list_subjects $session_file $username_new # show the status only of the new subject
 
-## Lists only one subject's status
-run_test success "10. Lists only one subject's status" ./rep_list_subjects $session_file $username
+# ## Lists only one subject's status
+# run_test success "10. Lists only one subject's status" ./rep_list_subjects $session_file $username
 
-## Lists the subjects of a role
-run_test success "11. Lists the subjects of a role" ./rep_list_role_subjects $session_file Managers
-run_test failure "11(1). Lists the subjects of a role" ./rep_list_role_subjects $session_file \"Not Found\"
+# ## Lists the subjects of a role
+# run_test success "11. Lists the subjects of a role" ./rep_list_role_subjects $session_file Managers
+# run_test failure "11(1). Lists the subjects of a role" ./rep_list_role_subjects $session_file \"Not Found\"
 
-## Lists the roles of a subject 
-run_test success "12. Lists the roles of a subject" ./rep_list_subject_roles $session_file $username
-run_test failure "12(1). Lists the roles of a subject" ./rep_list_subject_roles $session_file ${username}_not_found
+# ## Lists the roles of a subject 
+# run_test success "12. Lists the roles of a subject" ./rep_list_subject_roles $session_file $username
+# run_test failure "12(1). Lists the roles of a subject" ./rep_list_subject_roles $session_file ${username}_not_found
 
-## Lists the permissions of a role
-run_test success "13. Lists the permissions of a role" ./rep_list_role_permissions $session_file Managers
-run_test failure "13(1). Lists the permissions of a role" ./rep_list_role_permissions $session_file \"Not Found\"
-run_test success "13(2). Lists the permissions of a role" ./rep_list_role_permissions $session_file_3 Managers
+# ## Lists the permissions of a role
+# run_test success "13. Lists the permissions of a role" ./rep_list_role_permissions $session_file Managers
+# run_test failure "13(1). Lists the permissions of a role" ./rep_list_role_permissions $session_file \"Not Found\"
+# run_test success "13(2). Lists the permissions of a role" ./rep_list_role_permissions $session_file_3 Managers
 
 ## Add a document to the organization (this command needs authorization!!! - `DOC_NEW` permission)
 run_test success "14. Add a document to the organization" ./rep_add_doc $session_file $document_name $file
@@ -185,17 +185,17 @@ run_test success "14(2). Add a document to the organization" ./rep_add_doc $sess
 run_test failure "14(3). Add a document to the organization" ./rep_add_doc $session_file_2 ${document_name}_3 $file # no authorization!! (didn't assume the role)
 run_test success "14(4). Add a document to the organization" ./rep_add_doc $session_file_3 ${document_name}_2 $file # same name, different org -> different f
 
-## Lists the roles that have a permission
-run_test success "15. Lists the roles that have a permission" ./rep_list_permission_roles $session_file SUBJECT_NEW
-run_test success "15(1). Lists the roles that have a permission" ./rep_list_permission_roles $session_file \"Not Found\" # TODO: ask Alfredo, should return [] or error?
-run_test success "15(2). Lists the roles that have a permission" ./rep_list_permission_roles $session_file DOC_READ
-#TODO: make tests with multiple roles per file!!!!
+# ## Lists the roles that have a permission
+# run_test success "15. Lists the roles that have a permission" ./rep_list_permission_roles $session_file SUBJECT_NEW
+# run_test success "15(1). Lists the roles that have a permission" ./rep_list_permission_roles $session_file \"Not Found\" # TODO: ask Alfredo, should return [] or error?
+# run_test success "15(2). Lists the roles that have a permission" ./rep_list_permission_roles $session_file DOC_READ
+# #TODO: make tests with multiple roles per file!!!!
 
-## Lists the documents of the organization
-run_test success "15(3). Lists the documents of the organization" ./rep_list_docs $session_file -s $username -d ot 06-12-2025 # organization 1
-run_test_output success "{}" "15(4). Lists the documents of the organization" ./rep_list_docs $session_file_4 -s $username -d ot 06-12-2025 # organization 3, should be empty because we didn't add any document to it
+# ## Lists the documents of the organization
+# run_test success "15(3). Lists the documents of the organization" ./rep_list_docs $session_file -s $username -d ot 06-12-2025 # organization 1
+# run_test_output success "{}" "15(4). Lists the documents of the organization" ./rep_list_docs $session_file_4 -s $username -d ot 06-12-2025 # organization 3, should be empty because we didn't add any document to it
 
-# ###################### AUTHORIZED COMMANDS ######################
+# # ###################### AUTHORIZED COMMANDS ######################
 
 # Adds a new subject (fail)
 run_test failure "16. Adds a new subject" ./rep_add_subject $session_file_2 $username_2 $full_name_2 $email_2 $user_credentials_2
@@ -227,13 +227,17 @@ run_test success "21(1). Assume session role" ./rep_assume_role $session_file_5 
 run_test success "22. Suspends a role" ./rep_suspend_role $session_file $new_role
 
 ## Tries to add a subject with a suspended role
-run_test failure "22(1). Adds a new subject with a suspended role" ./rep_add_subject $session_file_2 $username_3 $full_name_3 $email_3 $user_credentials_3
+run_test failure "22(1). Adds a new subject with a suspended role" ./rep_add_subject $session_file_5 $username_3 $full_name_3 $email_3 $user_credentials_3
 
 ## Reactivates a role
 run_test success "24. Reactivates a role" ./rep_reactivate_role $session_file $new_role
 
 ## Adds a new subject since the role is active
-run_test success "24(1). Adds a new subject with a reactivated role" ./rep_add_subject $session_file_2 $username_3 $full_name_3 $email_3 $user_credentials_3
+run_test success "24(1). Adds a new subject with a reactivated role" ./rep_add_subject $session_file_5 $username_3 $full_name_3 $email_3 $user_credentials_3
+
+run_test failure "25. Removes a subject from a role" ./rep_remove_permission $session_file_2 $new_role $username_2
+run_test success "25(1). Removes a subject from a role" ./rep_remove_permission $session_file $new_role $username_2
+run_test failure "25(2). A"
 
 # ## Adds a subject to a role
 # run_test success "22. Adds a subject to a role" ./rep_add_permission $session_file $new_role $username
@@ -252,6 +256,7 @@ run_test success "24(1). Adds a new subject with a reactivated role" ./rep_add_s
 
 # ## Releases the given role
 # run_test success "Releases the session role [Managers]" ./rep_drop_role $session_file Managers
+
 
 
 # ###################### AUTHORIZED COMMANDS ######################

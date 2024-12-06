@@ -129,7 +129,8 @@ def create_session():
             'organization': organization,
             'username': username,
             'derived_key': derived_key_hex,
-            'msg_id': 0
+            'msg_id': 0,
+            'roles': []
         }
         
         associated_data = {

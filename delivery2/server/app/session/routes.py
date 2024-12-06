@@ -12,6 +12,14 @@ def assume_session_role():
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
 
+    ############################## Check Active User ##############################
+    user_data = current_app.organization_db.retrieve_subject(organization_name, username)
+    
+    if user_data['state'] != 'active':
+        response = {'error': 'User is not active'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
+    
     ############################ Logic of the endpoint ############################
     plaintext_role = plaintext.get('role')
 
@@ -46,6 +54,14 @@ def drop_session_role():
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
 
+    ############################## Check Active User ##############################
+    user_data = current_app.organization_db.retrieve_subject(organization_name, username)
+    
+    if user_data['state'] != 'active':
+        response = {'error': 'User is not active'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
+    
     ############################ Logic of the endpoint ############################
     plaintext_role = plaintext.get('role')
 
@@ -82,6 +98,14 @@ def list_session_roles():
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
 
+    ############################## Check Active User ##############################
+    user_data = current_app.organization_db.retrieve_subject(organization_name, username)
+    
+    if user_data['state'] != 'active':
+        response = {'error': 'User is not active'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
+    
     ############################ Logic of the endpoint ############################
     roles = current_app.sessions[session_id].get('roles')
 
