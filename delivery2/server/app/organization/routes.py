@@ -543,20 +543,35 @@ def update_subject_state():
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
 
+    ############################ Authorization ############################
+    plaintext_state = plaintext.get('state')
+    if plaintext_state != 'active' and plaintext_state != 'suspended':
+        response = {'error': f'Invalid state "{plaintext_state}". State must be "active" or "suspended"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
+
+    if plaintext_state == 'active':
+        required_permission = "SUBJECT_UP"
+    else:
+        required_permission = "SUBJECT_DOWN"
+
+    permission_in_session = check_user_permission_in_session(current_app.logger, required_permission, current_app.sessions[session_id], current_app.organization_db)
+
+    if permission_in_session == False:
+        current_app.logger.error(f'User does not have a {required_permission} permission to {plaintext_state} a subject')
+        response = {'error': f'User does not have a {required_permission} permission to {plaintext_state} a subject'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
+
     ############################ Logic of the endpoint ############################
     plaintext_username = plaintext.get("username")
-    plaintext_state = plaintext.get("state")
     subject_data = current_app.organization_db.retrieve_subject(organization_name, plaintext_username)
 
     if not subject_data:
         response = {'error': f'Subject "{plaintext_username}" not found in organization "{organization_name}"'}
         data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
         return jsonify(data), 403
-    
-    if plaintext_state != 'active' and plaintext_state != 'suspended':
-        response = {'error': f'Invalid state "{plaintext_state}". State must be "active" or "suspend"'}
-        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
-        return jsonify(data), 403
+
     
     subject_data["state"] = plaintext_state
     
