@@ -46,15 +46,19 @@ run_test_output() {
     if [ "$expect_failure" = "success" ]; then
         if [ $exit_code -ne 0 ]; then
             echo -e "${RED}Test failed: $test_name${NC}"
+            exit 1
             echo "$output"
         elif ! echo "$output" | grep -q "$expected_output"; then
             echo -e "${RED}Test failed: $test_name - Output does not contain expected text${NC}"
+            exit 1
         fi
     else
         if [ $exit_code -eq 0 ]; then
             echo -e "${RED}Test failed (expected failure but succeeded): $test_name${NC}"
+            exit 1
         elif echo "$output" | grep -q "$expected_output"; then
             echo -e "${RED}Test failed: $test_name - Output contains unexpected text${NC}"
+            exit 1
         fi
     fi
     echo -e "$output"
@@ -67,6 +71,7 @@ random_seed=$RANDOM
 
 organization_name="org_$random_seed"
 organization_name_2="org_2_$random_seed"
+organization_name_3="org_3_$random_seed"
 
 username="user_$random_seed"
 full_name="name_$random_seed"
@@ -86,6 +91,7 @@ file="../requirements.txt"
 session_file="state/session_file1__$random_seed"
 session_file_2="state/session_file2__$random_seed"
 session_file_3="state/session_file3__$random_seed"
+session_file_4="state/session_file4__$random_seed"
 
 new_role="new_role_$random_seed"
 
@@ -106,6 +112,7 @@ run_test success "2. Create Manager credentials" ./rep_subject_credentials $user
 run_test success "3. Create an organization" ./rep_create_org $organization_name $username $full_name $email $user_credentials
 run_test failure "3(1). Create an organization" ./rep_create_org $organization_name $username $full_name $email $user_credentials
 run_test success "3(2). Create an organization" ./rep_create_org $organization_name_2 $username $full_name $email $user_credentials # new organization
+run_test success "3(3). Create an organization" ./rep_create_org $organization_name_3 $username $full_name $email $user_credentials # another new organization
 
 ## Lists all organizations
 run_test success "5. List all organizations" ./rep_list_orgs
@@ -115,6 +122,7 @@ run_test success "6. Create a session" ./rep_create_session $organization_name $
 run_test failure "6(1). Create a session" ./rep_create_session ${organization_name}_not_found $username $user_password $user_credentials $session_file
 run_test success "6(2). Create a session" ./rep_create_session $organization_name $username $user_password $user_credentials $session_file_2 # 2 sessions in the same org
 run_test success "6(3). Create a session" ./rep_create_session $organization_name_2 $username $user_password $user_credentials $session_file_3 # a session with other org
+run_test success "6(4). Create a session" ./rep_create_session $organization_name_3 $username $user_password $user_credentials $session_file_4 # a session with other new org
 
 ## Download a file given its handle
 # run_test success "Download a file given it's handle" ./rep_get_file <file handle> [file]
@@ -125,7 +133,7 @@ run_test success "6(3). Create a session" ./rep_create_session $organization_nam
 run_test success "7. Assume session role" ./rep_assume_role $session_file Managers
 run_test failure "7(1). Assume session role" ./rep_assume_role $session_file \"Not Found\"
 run_test success "7(2). Assume session role" ./rep_assume_role $session_file Managers # same role
-run_test success "7(3). Assume session role" ./rep_assume_role $session_file_2 Managers # same role
+run_test success "7(4). Assume session role" ./rep_assume_role $session_file_3 Managers # another org, is valid (since he has the role)
 
 ## Lists the current session roles
 run_test success "8. Lists the current session roles" ./rep_list_roles $session_file # TODO: Como ficou a situação do argumento role?
@@ -157,10 +165,12 @@ run_test success "13. Lists the permissions of a role" ./rep_list_role_permissio
 run_test failure "13(1). Lists the permissions of a role" ./rep_list_role_permissions $session_file \"Not Found\"
 run_test success "13(2). Lists the permissions of a role" ./rep_list_role_permissions $session_file_3 Managers
 
-## Add a document to the organization
+## Add a document to the organization (this command needs authorization!!! - `DOC_NEW` permission)
 run_test success "14. Add a document to the organization" ./rep_add_doc $session_file $document_name $file
 run_test failure "14(1). Add a document to the organization" ./rep_add_doc $session_file $document_name $file
 run_test success "14(2). Add a document to the organization" ./rep_add_doc $session_file ${document_name}_2 $file
+run_test failure "14(3). Add a document to the organization" ./rep_add_doc $session_file_2 ${document_name}_3 $file # no authorization!! (didn't assume the role)
+run_test success "14(4). Add a document to the organization" ./rep_add_doc $session_file_3 ${document_name}_2 $file # same name, different org -> different f
 
 ## Lists the roles that have a permission
 run_test success "15. Lists the roles that have a permission" ./rep_list_permission_roles $session_file SUBJECT_NEW
@@ -170,7 +180,7 @@ run_test success "15(2). Lists the roles that have a permission" ./rep_list_perm
 
 ## Lists the documents of the organization
 run_test success "15(3). Lists the documents of the organization" ./rep_list_docs $session_file -s $username -d ot 06-12-2025 # organization 1
-run_test_output success "{}" "15(4). Lists the documents of the organization" ./rep_list_docs $session_file_3 -s $username -d ot 06-12-2025 # organization 2, should be empty because we didn't add any document to it
+run_test_output success "{}" "15(4). Lists the documents of the organization" ./rep_list_docs $session_file_4 -s $username -d ot 06-12-2025 # organization 3, should be empty because we didn't add any document to it
 
 # ###################### AUTHORIZED COMMANDS ######################
 
