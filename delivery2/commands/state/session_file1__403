@@ -1,0 +1,10 @@
+{
+    "session_id": 1,
+    "organization": "org_403",
+    "username": "user_403",
+    "derived_key": "3e052ed77ffe4358c17c53b7c3843600d7416efdc68ab820887ed467c0502fe0",
+    "msg_id": 40,
+    "roles": [
+        "Managers"
+    ]
+}

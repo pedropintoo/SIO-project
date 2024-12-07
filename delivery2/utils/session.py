@@ -1,6 +1,8 @@
 import json
 from utils import symmetric
 from cryptography.exceptions import InvalidTag
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
 import requests
 
 
@@ -129,30 +131,29 @@ def send_session_data(logger, server_address, command, endpoint, session_file, p
 
     result = request_func(f'{server_address}{endpoint}', json={'associated_data': data["associated_data"], 'encrypted_data': data["encrypted_data"]})
 
-    if result.status_code != 200:
-        raise Exception(f'[{result.status_code}] Failed to execute default command: {endpoint}. Response: {result.text}')
-
     sessions = {session_id: {"msg_id": msg_id, "organization": organization, "derived_key": derived_key_hex, "username": usernameSession}}
     plaintext, _, _, msg_id, _, _ = decapsulate_session_data(json.loads(result.text), sessions)
+
+    if msg_id <= session['msg_id']:
+        raise Exception(f'Replay attack detected for session {session_id}')
 
     # Update session file
     with open(session_file, 'w') as f:
         session['msg_id'] = msg_id
         json.dump(session, f, indent=4)
+        
+    if result.status_code != 200:
+        raise Exception(f'[{result.status_code}] Failed to execute default command: {endpoint}. Response: {plaintext}')
 
     return plaintext
+ 
 
-def check_user_permission_in_session(permission, session, organization_db):
-    
-    if 'role' not in session:
-        return False
-    
-    roles = session['role']
-    if roles is None:
-        return False
+def get_document_handle(organization_name, document_name):
+    """ Returns the document handle, i.e. a digest, for the given organization and document name. """  
+    concatenated = (organization_name + document_name).encode('utf-8')
 
-    return organization_db.check_role_permission(session['organization'], roles, permission)
+    digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    digest.update(concatenated)
+    file_handle_hex = digest.finalize().hex()
     
-    
-    
-
+    return file_handle_hex
