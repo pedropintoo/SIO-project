@@ -96,6 +96,18 @@ user_password_3="user_password_3_$random_seed"
 user_credentials_3="state/user_credentials_3_$random_seed.pem"
 email_3="email_3_$random_seed"
 
+username_4="user_4_$random_seed"
+full_name_4="name_4_$random_seed"
+user_password_4="user_password_4_$random_seed"
+user_credentials_4="state/user_credentials_4_$random_seed.pem"
+email_4="email_4_$random_seed"
+
+username_5="user_5_$random_seed"
+full_name_5="name_5_$random_seed"
+user_password_5="user_password_5_$random_seed"
+user_credentials_5="state/user_credentials_5_$random_seed.pem"
+email_5="email_5_$random_seed"
+
 document_name="requirements_$random_seed"
 file="../requirements.txt"
 
@@ -113,6 +125,8 @@ new_role="new_role_$random_seed"
 run_test success "1. Create subject credentials" ./rep_subject_credentials password1 state/new_data.pem
 run_test success "1(1). Create subject credentials" ./rep_subject_credentials $user_password_2 $user_credentials_2
 run_test success "1(2). Create subject credentials" ./rep_subject_credentials $user_password_3 $user_credentials_3
+run_test success "1(3). Create subject credentials" ./rep_subject_credentials $user_password_4 $user_credentials_4
+run_test success "1(4). Create subject credentials" ./rep_subject_credentials $user_password_5 $user_credentials_5
 ## Decrypt file
 # TODO:......
 
@@ -195,21 +209,26 @@ run_test success "14(4). Add a document to the organization" ./rep_add_doc $sess
 # run_test success "15(3). Lists the documents of the organization" ./rep_list_docs $session_file -s $username -d ot 06-12-2025 # organization 1
 # run_test_output success "{}" "15(4). Lists the documents of the organization" ./rep_list_docs $session_file_4 -s $username -d ot 06-12-2025 # organization 3, should be empty because we didn't add any document to it
 
+# TODO: check this better
+#  check all possibilities of the command
+#  also the creator!
+#  and different organizations 
+
 # # ###################### AUTHORIZED COMMANDS ######################
 
 # Adds a new subject (fail)
-run_test failure "16. Adds a new subject" ./rep_add_subject $session_file_2 $username_2 $full_name_2 $email_2 $user_credentials_2
+run_test failure "16. Adds a new subject" ./rep_add_subject $session_file_2 $username_2 $full_name_2 $email_2 $user_credentials_2 # does not have a "SUBJECT_NEW" permission
 
 # Adds a new subject and creates a session for the new user (success)
 run_test success "16(1). Adds a new subject" ./rep_add_subject $session_file $username_2 $full_name_2 $email_2 $user_credentials_2
 run_test success "16(2). Create a session for the new user" ./rep_create_session $organization_name $username_2 $user_password_2 $user_credentials_2 $session_file_5
 
 ## Suspends a subject
-run_test failure "17. Suspends a subject" ./rep_suspend_subject $session_file_5 $username_2 # user does not have a SUBJECT_DOWN permission
+run_test failure "17. Suspends a subject" ./rep_suspend_subject $session_file_2 $username_2 # user does not have a SUBJECT_DOWN permission
 run_test success "17(1). Suspends a subject" ./rep_suspend_subject $session_file $username_2
 
 ## Activate a subject
-run_test failure "18. Activate a subject" ./rep_activate_subject $session_file_5 $username_2 # user does not have a SUBJECT_UP permission
+run_test failure "18. Activate a subject" ./rep_activate_subject $session_file_2 $username_2 # user does not have a SUBJECT_UP permission
 run_test success "18(1). Activate a subject" ./rep_activate_subject $session_file $username_2
 
 ## Adds a new role
@@ -237,28 +256,28 @@ run_test success "24(1). Adds a new subject with a reactivated role" ./rep_add_s
 
 run_test failure "25. Removes a subject from a role" ./rep_remove_permission $session_file_2 $new_role $username_2
 run_test success "25(1). Removes a subject from a role" ./rep_remove_permission $session_file $new_role $username_2
-run_test failure "25(2). A"
+run_test failure "25(2). Adds a new subject after being removed from a role" ./rep_add_subject $session_file_5 $username_4 $full_name_4 $email_4 $user_credentials_4
 
-# ## Adds a subject to a role
-# run_test success "22. Adds a subject to a role" ./rep_add_permission $session_file $new_role $username
+run_test failure "26. Removes permission from a role" ./rep_remove_permission $session_file_2 $new_role SUBJECT_NEW # does not have a ROLE_MOD permission
+run_test success "26(1). Removes permission from a role" ./rep_remove_permission $session_file $new_role SUBJECT_NEW
+run_test failure "26(2). Adds a new subject" ./rep_add_subject $session_file_5 $username_5 $full_name_5 $email_5 $user_credentials_5 # does not have a SUBJECT_NEW permission
 
-# ## Removes a subject from a role
-# run_test success "23. Removes a subject from a role" ./rep_remove_permission $session_file $new_role $username
+# Fetches the metadata of a document with a given name
+run_test success "27. Fetches the metadata of a document with a given name" ./rep_get_doc_metadata $session_file $document_name
 
-# ## Adds a permission to a role
-# run_test success "24. Adds a permission to a role" ./rep_add_permission $session_file $new_role SUBJECT_NEW
+# Delete doc and observe that a soft delete is performed
+run_test success "27(1). Deletes a document" ./rep_delete_doc $session_file $document_name
 
-# ## Removes a permission from a role
-# run_test success "25. Removes a permission from a role" ./rep_remove_permission $session_file $new_role SUBJECT_NEW
+# Fetches the metadata of a document with a given name
+run_test success "27(2). Fetches the metadata of a document with a given name" ./rep_get_doc_metadata $session_file $document_name
 
-# ## Adds a document to the organization
-# run_test success "26. Adds a document to the organization" ./rep_add_doc $session_file <document_name> <file>
+# Changes the ACL of a document by adding (+) or removing (-) a permission for a given role
+run_test success "28. Changes the ACL of a document by adding a permission for a given role" ./rep_acl_doc $session_file $document_name \+ $new_role DOC_READ 
 
-# ## Releases the given role
-# run_test success "Releases the session role [Managers]" ./rep_drop_role $session_file Managers
+# This commands requires a DOC_ACL permission.
+run_test failure "28(2). Changes the ACL of a document by adding a permission for a given role" ./rep_acl_doc $session_file_2 $document_name \+ $new_role DOC_READ # does not have a DOC_ACL permission
 
-
-
+run_test success "29. Releases the session role [Managers]" ./rep_drop_role $session_file Managers
 # ###################### AUTHORIZED COMMANDS ######################
 
 
