@@ -21,6 +21,7 @@ Se o servidor mudar o ficheiro e tentarmos desincriptar temos de verificar o dig
  - parser da data
  - mensagens de erro, suposto passar informação
  - lifetime das sessões
+ - guardar as chaves da sessão encriptadas? Elas são guardadas num dicionario, mas não são encriptadas.
 
 
 # FALTA TESTAR!!:
