@@ -1121,7 +1121,7 @@ def delete_document():
 
 @organization_bp.route("/documents/acl", methods=['POST'])
 def update_acl_doc():
-    # changes the ACL of a document by adding (+) or removing (-) a permission for a given role. Use the names previously referred for the permission rights. This commands requires a DOC_ACL permission.
+    # Changes the ACL of a document by adding (+) or removing (-) a permission for a given role. Use the names previously referred for the permission rights. This commands requires a DOC_ACL permission.
     plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
 
     # Update session msg_id

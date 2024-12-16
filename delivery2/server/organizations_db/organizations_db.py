@@ -565,30 +565,6 @@ class OrganizationsDB:
 
         return update_result.modified_count > 0
 
-
-
-    # def update_acl(self, organization_name, document_name, new_acl):
-         
-    #     # new_acl example: "tios_de_aveiro": ["DOC_ACL", "DOC_READ"]
-
-    #     # Fetch the current document metadata
-    #     document_acl = self.collection.find_one(
-    #         {"name": organization_name},
-    #         {f"documents_metadata.{document_name}.document_acl": 1}
-    #     )
-
-    #     # Update or append the new_acl to the document_acl
-    #     for acl_name, acl_permissions in new_acl.items():
-    #         document_acl[acl_name] = acl_permissions
-
-    #     # Update the document metadata with the new_acl
-    #     result = self.collection.update_one(
-    #         {"name": organization_name},
-    #         {"$set": {f"documents_metadata.{document_name}.document_acl": document_acl}}
-    #     )
-
-    #     return result.modified_count
-
     def add_permission_to_document(self, organization_name, document_name, role_name, permission):
         # TODO: Test
 
