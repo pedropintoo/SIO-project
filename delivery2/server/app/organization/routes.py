@@ -245,6 +245,11 @@ def suspend_role():
     ############################ Logic of the endpoint ############################
     plaintext_role = plaintext.get("role")
 
+    if not current_app.organization_db.has_one_ROLE_ACL_in_role_after_remove(organization, plaintext_role):
+        response = {'error': f'At least one role must have ROLE_ACL permission.'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 409
+
     role_data = current_app.organization_db.suspend_role(organization, plaintext_role)
     
     if not role_data:
@@ -397,6 +402,11 @@ def remove_permission_from_role():
     plaintext_role = plaintext.get("role")
     plaintext_permission = plaintext.get("permission")
 
+    if not current_app.organization_db.has_one_ROLE_ACL_in_role_after_remove(organization, plaintext_role, plaintext_permission):
+        response = {'error': f'At least one role must have ROLE_ACL permission.'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 409
+
     r = current_app.organization_db.remove_permission_from_role(organization, plaintext_role, plaintext_permission)
     
     if not r:
@@ -499,6 +509,11 @@ def remove_subject_from_role():
     plaintext_role = plaintext.get("role")
     plaintext_subject = plaintext.get("username")
 
+    if plaintext_role == "Managers" and current_app.organization_db.has_one_active_user_after_remove(organization, plaintext_role, plaintext_subject):
+        response = {'error': f'The Managers role must have at any time an active subject'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 404
+        
     r = current_app.organization_db.remove_subject_from_role(organization, plaintext_role, plaintext_subject)
     
     if not r:
@@ -644,8 +659,7 @@ def update_subject_state():
 
     if plaintext_state == 'active':
         required_permission = "SUBJECT_UP"
-
-    elif plaintext_state == 'suspended':
+    elif plaintext_state == 'suspended': 
         required_permission = "SUBJECT_DOWN"
     else:
         response = {'error': f'Invalid state "{plaintext_state}". State must be "active" or "suspended"'}
@@ -664,6 +678,11 @@ def update_subject_state():
     plaintext_username = plaintext.get("username")
     subject_data = current_app.organization_db.retrieve_subject(organization, plaintext_username)
 
+    if plaintext_state == "suspended" and current_app.organization_db.check_user_role(organization, plaintext_username, 'Managers'): 
+        response = {'error': f'The Managers can never be suspended"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
+        
     if not subject_data:
         response = {'error': f'Subject "{plaintext_username}" not found in organization "{organization}"'}
         data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
@@ -875,9 +894,7 @@ def create_document():
     encryption_file = plaintext.get("encryption_file")
     # current_app.logger.debug(f"document_acl: {plaintext.get('document_acl')}")
     document_acl = {
-        "Managers": ["DOC_ACL", "DOC_READ", "DOC_DELETE"],
-        # "zezinho": ["DOC_READ", "DOC_DELETE"]
-        # TODO: Same for all the assumed roles of the user? Wait by teacher response.
+        current_app.sessions[session_id]["roles"][0]: ["DOC_ACL", "DOC_READ", "DOC_DELETE"] # the first role can read the file
     }
     file_handle_hex = plaintext.get("file_handle")
     name = plaintext.get("name")
@@ -1160,6 +1177,12 @@ def update_acl_doc():
             return jsonify(data), 409
         
     elif plaintext_operation == "-":
+        
+        if not current_app.organization_db.has_one_DOC_ACL_in_document_after_remove(organization, plaintext_document_name, plaintext_role, plaintext_permission):
+            response = {'error': f'At least one role must keep this right for each document, in order to allow an ACL to be updated'}            
+            data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+            return jsonify(data), 409
+        
         r = current_app.organization_db.remove_permission_from_document(organization, plaintext_document_name, plaintext_role, plaintext_permission)
         
         if not r:

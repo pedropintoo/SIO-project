@@ -374,6 +374,33 @@ class OrganizationsDB:
             return None
 
         return result.modified_count
+    
+    def has_one_ROLE_ACL_in_role_after_remove(self, organization_name, role_name, permission=None):
+        if permission is not None and permission != "ROLE_ACL":
+            return True
+        
+        # Fetch the organization with the required roles
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"roles": 1}  # Fetch only the roles field
+        )
+        if not result:
+            return None  # Organization not found
+
+        # Extract roles
+        roles = result.get("roles", {})
+        if role_name not in roles:
+            return None  # Role not found
+
+        # Check other active roles for ROLE_ACL
+        for other_role_name, other_role in roles.items():
+            if other_role_name == role_name or other_role.get("state") != "active":
+                continue  # Skip the target role or inactive roles
+            if "ROLE_ACL" in other_role.get("permissions", []):
+                return True  # Another active role has ROLE_ACL
+
+        # No active roles have ROLE_ACL after the removal
+        return False
 
     def add_subject_to_role(self, organization_name, role_name, subject):
         if not self.collection.find_one({"name": organization_name, f"roles.{role_name}": {"$exists": True}}):
@@ -402,6 +429,33 @@ class OrganizationsDB:
             return None
 
         return result.modified_count
+
+    def has_one_active_user_after_remove(self, organization_name, role_name, subject):
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"roles": 1, "subjects": 1}  # Only fetch roles and subjects
+        )
+        if not result:
+            return None  # Organization not found
+
+        roles = result.get("roles", {})
+        role = roles.get(role_name)
+        if not role:
+            return None  # Role not found
+
+        role_subjects = role.get("subjects", [])
+        if subject_to_remove not in role_subjects:
+            return None  # The subject to remove is not part of the role
+
+        remaining_subjects = [subj for subj in role_subjects if subj != subject_to_remove]
+
+        subjects = result.get("subjects", {})
+        for subj_id in remaining_subjects:
+            subject = subjects.get(subj_id)
+            if subject and subject.get("state") == "active":
+                return True  # At least one remaining subject is active
+
+        return False
 
     ### Organization Management ###
     def in_database(self, organization_name):
@@ -626,6 +680,39 @@ class OrganizationsDB:
             return None
 
         return result.modified_count
+    
+    def has_one_DOC_ACL_in_document_after_remove(self, organization_name, document_name, role_name, permission):
+        if permission != "DOC_ACL":
+            return True
+        
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"documents_metadata": 1}  # Fetch only the documents_metadata field
+        )
+        if not result:
+            return None  # Organization not found
+
+        documents_metadata = result.get("documents_metadata", {})
+        document = documents_metadata.get(document_name)
+        if not document:
+            return None  # Document not found
+
+        document_acl = document.get("document_acl", {})
+        if role_name not in document_acl:
+            return None  # Role not found in document_acl
+
+        remaining_permissions_for_role = [
+            perm for perm in document_acl.get(role_name, []) if perm != permission
+        ]
+
+        for other_role, permissions in document_acl.items():
+            if other_role == role_name:
+                continue  # Skip the role we're modifying
+            if "DOC_ACL" in permissions:
+                return True  # Another role still has DOC_ACL
+
+        return False    
+    
     
     def list_documents(self, organization_name, creator, date_filter, date_str):
         # This command lists the documents of the organization with which I have currently a session, 
