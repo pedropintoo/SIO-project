@@ -245,6 +245,11 @@ def suspend_role():
     ############################ Logic of the endpoint ############################
     plaintext_role = plaintext.get("role")
 
+    if not current_app.organization_db.has_one_ROLE_ACL_in_role_after_remove(organization, plaintext_role):
+        response = {'error': f'At least one role must have ROLE_ACL permission.'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 409
+
     role_data = current_app.organization_db.suspend_role(organization, plaintext_role)
     
     if not role_data:
@@ -396,6 +401,11 @@ def remove_permission_from_role():
     ############################ Logic of the endpoint ############################
     plaintext_role = plaintext.get("role")
     plaintext_permission = plaintext.get("permission")
+
+    if not current_app.organization_db.has_one_ROLE_ACL_in_role_after_remove(organization, plaintext_role, plaintext_permission):
+        response = {'error': f'At least one role must have ROLE_ACL permission.'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 409
 
     r = current_app.organization_db.remove_permission_from_role(organization, plaintext_role, plaintext_permission)
     

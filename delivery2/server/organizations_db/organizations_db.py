@@ -374,6 +374,33 @@ class OrganizationsDB:
             return None
 
         return result.modified_count
+    
+    def has_one_ROLE_ACL_in_role_after_remove(self, organization_name, role_name, permission=None):
+        if permission is not None and permission != "ROLE_ACL":
+            return True
+        
+        # Fetch the organization with the required roles
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"roles": 1}  # Fetch only the roles field
+        )
+        if not result:
+            return None  # Organization not found
+
+        # Extract roles
+        roles = result.get("roles", {})
+        if role_name not in roles:
+            return None  # Role not found
+
+        # Check other active roles for ROLE_ACL
+        for other_role_name, other_role in roles.items():
+            if other_role_name == role_name or other_role.get("state") != "active":
+                continue  # Skip the target role or inactive roles
+            if "ROLE_ACL" in other_role.get("permissions", []):
+                return True  # Another active role has ROLE_ACL
+
+        # No active roles have ROLE_ACL after the removal
+        return False
 
     def add_subject_to_role(self, organization_name, role_name, subject):
         if not self.collection.find_one({"name": organization_name, f"roles.{role_name}": {"$exists": True}}):

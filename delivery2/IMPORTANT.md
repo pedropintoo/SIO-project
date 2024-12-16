@@ -10,9 +10,9 @@ extra: only the first role assigned in the session have permissions in the creat
 
 ## Testes
 
-Eliminar o ficheiro e acede-lo apartir do file_handler!
+Eliminar o ficheiro e acede-lo a partir do file_handler!
 
-Se o servidor mudar o ficheiro e tentarmos desincriptar temos de verificar o digest. (testar isso?)
+Se o servidor mudar o ficheiro e tentarmos desencriptar temos de verificar o digest. (testar isso?)
  -> Será que o rep_decrypt_file deve fazer essa verificação ou apenas o rep_get_file_doc?
  
 ## Perguntas 
