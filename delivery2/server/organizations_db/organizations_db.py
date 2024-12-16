@@ -379,7 +379,6 @@ class OrganizationsDB:
         if permission is not None and permission != "ROLE_ACL":
             return True
         
-        # Fetch the organization with the required roles
         result = self.collection.find_one(
             {"name": organization_name},
             {"roles": 1}  # Fetch only the roles field
@@ -387,19 +386,16 @@ class OrganizationsDB:
         if not result:
             return None  # Organization not found
 
-        # Extract roles
         roles = result.get("roles", {})
         if role_name not in roles:
             return None  # Role not found
 
-        # Check other active roles for ROLE_ACL
         for other_role_name, other_role in roles.items():
             if other_role_name == role_name or other_role.get("state") != "active":
                 continue  # Skip the target role or inactive roles
             if "ROLE_ACL" in other_role.get("permissions", []):
                 return True  # Another active role has ROLE_ACL
 
-        # No active roles have ROLE_ACL after the removal
         return False
 
     def add_subject_to_role(self, organization_name, role_name, subject):
@@ -618,30 +614,6 @@ class OrganizationsDB:
             return None
 
         return update_result.modified_count > 0
-
-
-
-    # def update_acl(self, organization_name, document_name, new_acl):
-         
-    #     # new_acl example: "tios_de_aveiro": ["DOC_ACL", "DOC_READ"]
-
-    #     # Fetch the current document metadata
-    #     document_acl = self.collection.find_one(
-    #         {"name": organization_name},
-    #         {f"documents_metadata.{document_name}.document_acl": 1}
-    #     )
-
-    #     # Update or append the new_acl to the document_acl
-    #     for acl_name, acl_permissions in new_acl.items():
-    #         document_acl[acl_name] = acl_permissions
-
-    #     # Update the document metadata with the new_acl
-    #     result = self.collection.update_one(
-    #         {"name": organization_name},
-    #         {"$set": {f"documents_metadata.{document_name}.document_acl": document_acl}}
-    #     )
-
-    #     return result.modified_count
 
     def add_permission_to_document(self, organization_name, document_name, role_name, permission):
         # TODO: Test

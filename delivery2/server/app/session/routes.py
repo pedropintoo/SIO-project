@@ -65,7 +65,7 @@ def drop_session_role():
     ############################ Logic of the endpoint ############################
     plaintext_role = plaintext.get('role')
 
-    # Check in the database if the username has that role in that organization
+    # Check the existence of the role within the current session
     has_role = plaintext_role in current_app.sessions[session_id].get('roles')
 
     if has_role == False:

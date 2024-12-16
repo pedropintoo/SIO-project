@@ -613,13 +613,6 @@ class Organization(Command):
         """These commands change the properties of a role in the organization with which I have currently a session, by adding a subject, removing a subject, adding a permission or removing a permission, respectively. Use the names previously referred for the permission rights. These commands require a ROLE_MOD permission."""
         # POST /api/v1/organizations/roles/<string:role>/permissions
         # POST /api/v1/organizations/roles/<string:role>/subjects
-        # if permissionOrUsername in DocumentPermissions.values():
-            # return requests.post(f'{self.server_address}/api/v1/organizations/roles/{role}/permissions', json={'session': session, 'permission': permissionOrUsername})
-        # else:
-            # return requests.post(f'{self.server_address}/api/v1/organizations/roles/{role}/subjects', json={'session': session, 'username': permissionOrUsername})
-
-        # print("DEBUG: permissionOrUsername", permissionOrUsername)
-        # print("DEBUG: DocumentPermissions values: ", [perm.value for perm in DocumentPermissions])
 
         if permissionOrUsername in PERMISSIONS:
             # print("DEBUG: permissionOrUsername is a permission")
@@ -649,11 +642,7 @@ class Organization(Command):
         """These commands change the properties of a role in the organization with which I have currently a session, by adding a subject, removing a subject, adding a permission or removing a permission, respectively. Use the names previously referred for the permission rights. These commands require a ROLE_MOD permission."""
         # POST /api/v1/organizations/roles/<string:role>/permissions
         # POST /api/v1/organizations/roles/<string:role>/subjects
-        # if permissionOrUsername in DocumentPermissions.values():
-            # return requests.delete(f'{self.server_address}/api/v1/organizations/roles/{role}/permissions', json={'session': session, 'permission': permissionOrUsername})
-        # else:
-            # return requests.delete(f'{self.server_address}/api/v1/organizations/roles/{role}/subjects', json={'session': session, 'username': permissionOrUsername})
-            
+ 
         if permissionOrUsername in PERMISSIONS:
             command = 'delete'
             endpoint = f'/api/v1/organizations/roles/permissions'
