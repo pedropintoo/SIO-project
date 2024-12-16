@@ -403,6 +403,33 @@ class OrganizationsDB:
 
         return result.modified_count
 
+    def has_one_active_user_after_remove(self, organization_name, role_name, subject):
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"roles": 1, "subjects": 1}  # Only fetch roles and subjects
+        )
+        if not result:
+            return None  # Organization not found
+
+        roles = result.get("roles", {})
+        role = roles.get(role_name)
+        if not role:
+            return None  # Role not found
+
+        role_subjects = role.get("subjects", [])
+        if subject_to_remove not in role_subjects:
+            return None  # The subject to remove is not part of the role
+
+        remaining_subjects = [subj for subj in role_subjects if subj != subject_to_remove]
+
+        subjects = result.get("subjects", {})
+        for subj_id in remaining_subjects:
+            subject = subjects.get(subj_id)
+            if subject and subject.get("state") == "active":
+                return True  # At least one remaining subject is active
+
+        return False
+
     ### Organization Management ###
     def in_database(self, organization_name):
         return self.collection.find_one({"name": organization_name}) is not None

@@ -499,6 +499,11 @@ def remove_subject_from_role():
     plaintext_role = plaintext.get("role")
     plaintext_subject = plaintext.get("username")
 
+    if plaintext_role == "Managers" and current_app.organization_db.has_one_active_user_after_remove(organization, plaintext_role, plaintext_subject):
+        response = {'error': f'The Managers role must have at any time an active subject'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 404
+        
     r = current_app.organization_db.remove_subject_from_role(organization, plaintext_role, plaintext_subject)
     
     if not r:
@@ -644,8 +649,7 @@ def update_subject_state():
 
     if plaintext_state == 'active':
         required_permission = "SUBJECT_UP"
-
-    elif plaintext_state == 'suspended':
+    elif plaintext_state == 'suspended': 
         required_permission = "SUBJECT_DOWN"
     else:
         response = {'error': f'Invalid state "{plaintext_state}". State must be "active" or "suspended"'}
@@ -664,6 +668,11 @@ def update_subject_state():
     plaintext_username = plaintext.get("username")
     subject_data = current_app.organization_db.retrieve_subject(organization, plaintext_username)
 
+    if plaintext_state == "suspended" and current_app.organization_db.check_user_role(organization, plaintext_username, 'Managers'): 
+        response = {'error': f'The Managers can never be suspended"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
+        
     if not subject_data:
         response = {'error': f'Subject "{plaintext_username}" not found in organization "{organization}"'}
         data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
