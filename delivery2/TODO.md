@@ -19,9 +19,9 @@ Se o servidor mudar o ficheiro e tentarmos desincriptar temos de verificar o dig
  - `-c` no subjects.py
  - docker tem problema?
  - parser da data
- - mensagens de erro, suposto passar informação
- - lifetime das sessões
- - guardar as chaves da sessão encriptadas? Elas são guardadas num dicionario, mas não são encriptadas.
+ - mensagens de erro, suposto passar informação. (meter um setDefaultLevel high)
+ - lifetime das sessões (5 min)
+ - guardar as chaves da sessão encriptadas? Elas são guardadas num dicionario, mas não são encriptadas. (não há problema porque é em memória)
 
 
 # FALTA TESTAR!!:
