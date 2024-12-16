@@ -654,6 +654,39 @@ class OrganizationsDB:
 
         return result.modified_count
     
+    def has_one_DOC_ACL_in_document_after_remove(self, organization_name, document_name, role_name, permission):
+        if permission != "DOC_ACL":
+            return True
+        
+        result = self.collection.find_one(
+            {"name": organization_name},
+            {"documents_metadata": 1}  # Fetch only the documents_metadata field
+        )
+        if not result:
+            return None  # Organization not found
+
+        documents_metadata = result.get("documents_metadata", {})
+        document = documents_metadata.get(document_name)
+        if not document:
+            return None  # Document not found
+
+        document_acl = document.get("document_acl", {})
+        if role_name not in document_acl:
+            return None  # Role not found in document_acl
+
+        remaining_permissions_for_role = [
+            perm for perm in document_acl.get(role_name, []) if perm != permission
+        ]
+
+        for other_role, permissions in document_acl.items():
+            if other_role == role_name:
+                continue  # Skip the role we're modifying
+            if "DOC_ACL" in permissions:
+                return True  # Another role still has DOC_ACL
+
+        return False    
+    
+    
     def list_documents(self, organization_name, creator, date_filter, date_str):
         # This command lists the documents of the organization with which I have currently a session, 
         # possibly filtered by a subject that created them and by a date (newer than, older than, equal to), expressed in the DD-MM-YYYY format.

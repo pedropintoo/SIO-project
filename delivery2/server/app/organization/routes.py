@@ -884,9 +884,7 @@ def create_document():
     encryption_file = plaintext.get("encryption_file")
     # current_app.logger.debug(f"document_acl: {plaintext.get('document_acl')}")
     document_acl = {
-        "Managers": ["DOC_ACL", "DOC_READ", "DOC_DELETE"],
-        # "zezinho": ["DOC_READ", "DOC_DELETE"]
-        # TODO: Same for all the assumed roles of the user? Wait by teacher response.
+        current_app.sessions[session_id]["roles"][0]: ["DOC_ACL", "DOC_READ", "DOC_DELETE"] # the first role can read the file
     }
     file_handle_hex = plaintext.get("file_handle")
     name = plaintext.get("name")
@@ -1169,6 +1167,12 @@ def update_acl_doc():
             return jsonify(data), 409
         
     elif plaintext_operation == "-":
+        
+        if not current_app.organization_db.has_one_DOC_ACL_in_document_after_remove(organization, plaintext_document_name, plaintext_role, plaintext_permission):
+            response = {'error': f'At least one role must keep this right for each document, in order to allow an ACL to be updated'}            
+            data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+            return jsonify(data), 409
+        
         r = current_app.organization_db.remove_permission_from_document(organization, plaintext_document_name, plaintext_role, plaintext_permission)
         
         if not r:

@@ -6,6 +6,7 @@
 4. Managers nunca podem ser "suspended"
 5. Managers têm de ter sempre, em qualquer altura um utilizador "active"
 
+extra: only the first role assigned in the session have permissions in the created document
 
 ## Testes
 
@@ -16,15 +17,11 @@ Se o servidor mudar o ficheiro e tentarmos desincriptar temos de verificar o dig
  
 ## Perguntas 
 
- - `-c` no subjects.py
- - docker tem problema?
- - parser da data
- - mensagens de erro, suposto passar informação. (meter um setDefaultLevel high)
- - lifetime das sessões (5 min)
- - guardar as chaves da sessão encriptadas? Elas são guardadas num dicionario, mas não são encriptadas. (não há problema porque é em memória)
-
+ - mensagens de erro, suposto passar informação. SOLUÇÃO: (meter um setDefaultLevel high)
+ - lifetime das sessões (5 min). SOLUÇÃO: adicionar no dicionario (DONE!)
 
 # FALTA TESTAR!!:
  - **rep_get_doc_file** 
  - **rep_decrypt**
+- **add_permission_to_document** (não é comando mas tem de ser testado!)
 
