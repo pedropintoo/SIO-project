@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
 from cryptography.exceptions import InvalidSignature
 import json
+from datetime import datetime
 
 @auth_bp.route('/organization', methods=['POST'])
 def create_organization():
@@ -130,7 +131,8 @@ def create_session():
             'username': username,
             'derived_key': derived_key_hex,
             'msg_id': 0,
-            'roles': []
+            'roles': [],
+            'expiration_date': datetime.now() + current_app.SESSION_EXPIRATION_TIME
         }
         
         associated_data = {

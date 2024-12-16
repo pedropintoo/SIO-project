@@ -4,7 +4,7 @@ from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 import requests
-
+from datetime import datetime
 
 def session_info_from_file(session_file):
     """
@@ -49,7 +49,7 @@ def encapsulate_session_data(plaintext, session_id, derived_key_hex, msg_id):
 
     return {'associated_data': associated_data, 'encrypted_data': encrypted_data}
 
-def decapsulate_session_data(data, sessions):
+def decapsulate_session_data(data, sessions, check_expiration_date=True):
     """
     Decrypts and processes data received from the client, with respective session details (with decryption & authentication).
     Args:
@@ -73,6 +73,10 @@ def decapsulate_session_data(data, sessions):
     session = sessions.get(session_id)
     if session is None:
         raise Exception(f'Session {session_id} not found')
+    
+    # Check for session timeout
+    if check_expiration_date and datetime.now() > session['expiration_date']:
+        raise Exception(f'Session {session_id} has already expired!')
     
     # Check for replays
     if msg_id <= session['msg_id']:
@@ -132,7 +136,7 @@ def send_session_data(logger, server_address, command, endpoint, session_file, p
     result = request_func(f'{server_address}{endpoint}', json={'associated_data': data["associated_data"], 'encrypted_data': data["encrypted_data"]})
 
     sessions = {session_id: {"msg_id": msg_id, "organization": organization, "derived_key": derived_key_hex, "username": usernameSession}}
-    plaintext, _, _, msg_id, _, _ = decapsulate_session_data(json.loads(result.text), sessions)
+    plaintext, _, _, msg_id, _, _ = decapsulate_session_data(json.loads(result.text), sessions, check_expiration_date=False) # no expiration is needed in the client side!
 
     if msg_id <= session['msg_id']:
         raise Exception(f'Replay attack detected for session {session_id}')
