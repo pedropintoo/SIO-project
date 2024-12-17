@@ -440,10 +440,10 @@ class OrganizationsDB:
             return None  # Role not found
 
         role_subjects = role.get("subjects", [])
-        if subject_to_remove not in role_subjects:
+        if subject not in role_subjects:
             return None  # The subject to remove is not part of the role
 
-        remaining_subjects = [subj for subj in role_subjects if subj != subject_to_remove]
+        remaining_subjects = [subj for subj in role_subjects if subj != subject]
 
         subjects = result.get("subjects", {})
         for subj_id in remaining_subjects:

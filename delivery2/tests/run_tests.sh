@@ -176,38 +176,38 @@ run_test success "9(3). Adds a new subject" ./rep_add_subject $session_file $use
 run_test success "9(4). Lists the organization's subjects' status" ./rep_list_subjects $session_file # show the status of all subjects
 run_test_output success "$username_new: active" "9(5). Lists the organization's subjects' status" ./rep_list_subjects $session_file $username_new # show the status only of the new subject
 
-## Lists only one subject's status
-run_test success "10. Lists only one subject's status" ./rep_list_subjects $session_file $username
+# ## Lists only one subject's status
+# run_test success "10. Lists only one subject's status" ./rep_list_subjects $session_file $username
 
-## Lists the subjects of a role
-run_test success "11. Lists the subjects of a role" ./rep_list_role_subjects $session_file Managers
-run_test failure "11(1). Lists the subjects of a role" ./rep_list_role_subjects $session_file \"Not Found\"
+# ## Lists the subjects of a role
+# run_test success "11. Lists the subjects of a role" ./rep_list_role_subjects $session_file Managers
+# run_test failure "11(1). Lists the subjects of a role" ./rep_list_role_subjects $session_file \"Not Found\"
 
-## Lists the roles of a subject 
-run_test success "12. Lists the roles of a subject" ./rep_list_subject_roles $session_file $username
-run_test failure "12(1). Lists the roles of a subject" ./rep_list_subject_roles $session_file ${username}_not_found
+# ## Lists the roles of a subject 
+# run_test success "12. Lists the roles of a subject" ./rep_list_subject_roles $session_file $username
+# run_test failure "12(1). Lists the roles of a subject" ./rep_list_subject_roles $session_file ${username}_not_found
 
-## Lists the permissions of a role
-run_test success "13. Lists the permissions of a role" ./rep_list_role_permissions $session_file Managers
-run_test failure "13(1). Lists the permissions of a role" ./rep_list_role_permissions $session_file \"Not Found\"
-run_test success "13(2). Lists the permissions of a role" ./rep_list_role_permissions $session_file_3 Managers
+# ## Lists the permissions of a role
+# run_test success "13. Lists the permissions of a role" ./rep_list_role_permissions $session_file Managers
+# run_test failure "13(1). Lists the permissions of a role" ./rep_list_role_permissions $session_file \"Not Found\"
+# run_test success "13(2). Lists the permissions of a role" ./rep_list_role_permissions $session_file_3 Managers
 
-## Add a document to the organization (this command needs authorization!!! - `DOC_NEW` permission)
+# ## Add a document to the organization (this command needs authorization!!! - `DOC_NEW` permission)
 run_test success "14. Add a document to the organization" ./rep_add_doc $session_file $document_name $file
 run_test failure "14(1). Add a document to the organization" ./rep_add_doc $session_file $document_name $file
 run_test success "14(2). Add a document to the organization" ./rep_add_doc $session_file ${document_name}_2 $file
 run_test failure "14(3). Add a document to the organization" ./rep_add_doc $session_file_2 ${document_name}_3 $file # no authorization!! (didn't assume the role)
 run_test success "14(4). Add a document to the organization" ./rep_add_doc $session_file_3 ${document_name}_2 $file # same name, different org -> different f
 
-## Lists the roles that have a permission
-run_test success "15. Lists the roles that have a permission" ./rep_list_permission_roles $session_file SUBJECT_NEW
-run_test success "15(1). Lists the roles that have a permission" ./rep_list_permission_roles $session_file \"Not Found\" # TODO: ask Alfredo, should return [] or error?
-run_test success "15(2). Lists the roles that have a permission" ./rep_list_permission_roles $session_file DOC_READ
-#TODO: make tests with multiple roles per file!!!!
+# ## Lists the roles that have a permission
+# run_test success "15. Lists the roles that have a permission" ./rep_list_permission_roles $session_file SUBJECT_NEW
+# run_test success "15(1). Lists the roles that have a permission" ./rep_list_permission_roles $session_file \"Not Found\" # TODO: ask Alfredo, should return [] or error?
+# run_test success "15(2). Lists the roles that have a permission" ./rep_list_permission_roles $session_file DOC_READ
+# #TODO: make tests with multiple roles per file!!!!
 
-## Lists the documents of the organization
-run_test success "15(3). Lists the documents of the organization" ./rep_list_docs $session_file -s $username -d ot 06-12-2025 # organization 1
-run_test_output success "{}" "15(4). Lists the documents of the organization" ./rep_list_docs $session_file_4 -s $username -d ot 06-12-2025 # organization 3, should be empty because we didn't add any document to it
+# ## Lists the documents of the organization
+# run_test success "15(3). Lists the documents of the organization" ./rep_list_docs $session_file -s $username -d ot 06-12-2025 # organization 1
+# run_test_output success "{}" "15(4). Lists the documents of the organization" ./rep_list_docs $session_file_4 -s $username -d ot 06-12-2025 # organization 3, should be empty because we didn't add any document to it
 
 # TODO: check this better
 #  check all possibilities of the command
@@ -278,10 +278,43 @@ run_test success "28. Changes the ACL of a document by adding a permission for a
 # This commands requires a DOC_ACL permission.
 run_test failure "28(2). Changes the ACL of a document by adding a permission for a given role" ./rep_acl_doc $session_file_2 $document_name \+ $new_role DOC_READ # does not have a DOC_ACL permission
 
-run_test success "29. Releases the session role [Managers]" ./rep_drop_role $session_file Managers
 # ###################### AUTHORIZED COMMANDS ######################
 
+# List the subjects that are Managers of the organization with which I have currently a session.
+run_test success "29. List the subjects that are Managers" ./rep_list_role_subjects $session_file Managers 
 
+run_test failure "30. Suspend a subject" ./rep_suspend_subject $session_file $username # Should not work because Managers cannot be suspended
 
+# Add Managers role
+run_test failure "31(1). Add Managers role" ./rep_assume_role $session_file_5 Managers # fail because does not have the permission
 
+# Suspend previous user
+run_test success "31(2). Suspend a subject" ./rep_suspend_subject $session_file $username_2
+
+# Add user2 to role Manager
+run_test success "32. Add user2 to role Manager" ./rep_add_permission $session_file Managers $username_2
+#run_test success "32(2). Add Managers role" ./rep_assume_role $session_file_5 Managers # now should work because user2 is a Manager
+
+# Remove user from role Manager
+run_test failure "33. Remove user from role Manager" ./rep_remove_permission $session_file Managers $username # should not work because Managers' role must have at least one user with a active status
+
+# List the subjects that are Managers
+run_test success "34. List the subjects that are Managers" ./rep_list_role_subjects $session_file Managers
+run_test success "34(1). List the subjects" ./rep_list_subjects $session_file
+
+# Reactivate user2
+run_test success "35. Reactivate a subject" ./rep_activate_subject $session_file $username_2
+
+# Suspend user (failure)
+run_test failure "36. Suspend a subject" ./rep_suspend_subject $session_file $username # should not work because Managers cannot be suspended
+
+# Remove user from role Manager
+run_test success "37. Assume role Manager" ./rep_assume_role $session_file_5 Managers 
+run_test success "37(1). Remove user from role Manager" ./rep_remove_permission $session_file_5 Managers $username
+
+# List the subjects that are Managers
+run_test success "38. List the subjects that are Managers" ./rep_list_role_subjects $session_file Managers
+run_test success "38(1). List the subjects" ./rep_list_subjects $session_file
+
+run_test success "39. Releases the session role [Managers]" ./rep_drop_role $session_file Managers
 

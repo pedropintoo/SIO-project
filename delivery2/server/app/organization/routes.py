@@ -509,7 +509,7 @@ def remove_subject_from_role():
     plaintext_role = plaintext.get("role")
     plaintext_subject = plaintext.get("username")
 
-    if plaintext_role == "Managers" and current_app.organization_db.has_one_active_user_after_remove(organization, plaintext_role, plaintext_subject):
+    if plaintext_role == "Managers" and not current_app.organization_db.has_one_active_user_after_remove(organization, plaintext_role, plaintext_subject):
         response = {'error': f'The Managers role must have at any time an active subject'}
         data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
         return jsonify(data), 404
