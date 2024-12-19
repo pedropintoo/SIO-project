@@ -110,14 +110,20 @@ email_5="email_5_$random_seed"
 
 document_name="requirements_$random_seed"
 document_name_new="README.md"
+document_name_new_2="IMPORTANT.md"
 file="../requirements.txt"
 readme="../README.md"
+important="../IMPORTANT.md"
 
 session_file="state/session_file1__$random_seed"
 session_file_2="state/session_file2__$random_seed"
 session_file_3="state/session_file3__$random_seed"
 session_file_4="state/session_file4__$random_seed"
 session_file_5="state/session_file5__$random_seed"
+
+output_file="state/output_file__$random_seed"
+output_file_2="state/output_file2__$random_seed"
+output_file_3="state/output_file3__$random_seed"
 
 new_role="new_role_$random_seed"
 
@@ -152,9 +158,6 @@ run_test failure "6(1). Create a session" ./rep_create_session ${organization_na
 run_test success "6(2). Create a session" ./rep_create_session $organization_name $username $user_password $user_credentials $session_file_2 # 2 sessions in the same org
 run_test success "6(3). Create a session" ./rep_create_session $organization_name_2 $username $user_password $user_credentials $session_file_3 # a session with other org
 run_test success "6(4). Create a session" ./rep_create_session $organization_name_3 $username $user_password $user_credentials $session_file_4 # a session with other new org
-
-## Download a file given its handle
-# run_test success "Download a file given it's handle" ./rep_get_file <file handle> [file]
 
 # ###################### AUTHENTICATED COMMANDS ######################
 
@@ -377,11 +380,26 @@ run_test success "51(4). Get the metadata of a document" ./rep_get_doc_metadata 
 run_test failure "52. Get the metadata of a document" ./rep_get_doc_metadata $session_file_5 $document_name_new
 run_test failure "52(1). Delete a document" ./rep_delete_doc $session_file_5 $document_name_new
 
-# Add DOC_READ to new_role
-run_test success "53. Add DOC_READ to new_role" ./rep_acl_doc $session_file $document_name_new \+ Managers DOC_READ
+# Add DOC_READ to Managers
+run_test success "53. Add DOC_READ to Managers" ./rep_acl_doc $session_file $document_name_new \+ Managers DOC_READ
 run_test success "53(1). Get the metadata of a document" ./rep_get_doc_metadata $session_file_5 $document_name_new
 
 # Delete a document
-run_test success "54. Add DOC_DEL to new_role" ./rep_acl_doc $session_file $document_name_new \+ Managers DOC_DELETE
+run_test success "54. Add DOC_DEL to Managers" ./rep_acl_doc $session_file $document_name_new \+ Managers DOC_DELETE
 run_test success "54(1). Delete a document" ./rep_delete_doc $session_file_5 $document_name_new
 
+# Get document file
+run_test failure "55. Get document file" ./rep_get_doc_file $session_file $document_name_new # document was deleted
+run_test success "55(1) Add document" ./rep_add_doc $session_file $document_name_new_2 $important
+run_test success "55(2) Get document file to the stdout" ./rep_get_doc_file $session_file $document_name_new_2
+run_test success "55(3) Get document file to a file" ./rep_get_doc_file $session_file $document_name_new_2 $output_file
+
+# Decrypt a file
+echo ""
+echo "56 Get the document's metadata ---------------------------------------------------------------------------"
+output=$(./rep_get_doc_metadata "$session_file" "$document_name_new_2")
+echo "$output" | python3 -c "import sys, json, ast; json.dump(ast.literal_eval(sys.stdin.read()), sys.stdout)" > "$output_file_3"
+file_handle=$(echo "$output" | python3 -c "import sys, ast; print(ast.literal_eval(sys.stdin.read())['file_handle'])")
+
+run_test success "56(1). Get a file from its file_handle" ./rep_get_file "$file_handle" "$output_file_2"
+run_test success "56(2). Decrypt a file" ./rep_decrypt_file "$output_file_2" "$output_file_3"

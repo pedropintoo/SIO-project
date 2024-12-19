@@ -733,6 +733,10 @@ class Organization(Command):
        
         metadata = self.rep_get_doc_metadata(session_file, document_name, output=False)
         file_handle = metadata['file_handle'] 
+
+        if not file_handle:
+            raise Exception(f'This document does not have a file_handle (probably deleted)')
+
         file_obj = File(self.logger, self.state)
         encrypted_data = file_obj.rep_get_file(file_handle, output=False)
         key = bytes.fromhex(metadata['key'])
