@@ -29,11 +29,17 @@ def assume_session_role():
     if has_role == False:
         response = {'error': 'User does not have the role in the organization'}
     else:    
-        current_app.sessions[session_id]['roles'] = [plaintext_role]
 
-        response = {
-            'state': f'Role "{plaintext_role}" assumed successfully'
-        }
+        # Check if exists, and remove duplicates
+        if plaintext_role not in current_app.sessions[session_id]['roles']:
+            current_app.sessions[session_id]['roles'] = current_app.sessions[session_id]['roles'] + [plaintext_role]
+            response = {
+                'state': f'Role "{plaintext_role}" assumed successfully'
+            }
+        else:
+            response = {
+                'state': f'Role "{plaintext_role}" already assumed'
+            }
 
     ###############################################################################
 

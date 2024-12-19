@@ -1,13 +1,11 @@
 ## Regras
 
 1. [DONE] Pelo menos uma role tem de ter **DOC_ACL** por documento.
-2. Em cada organização pelo menos uma role tem de ter a permissão ROLE_ACL.
-3. Sessions have a lifetime defined by the Repository, and should be deleted upon a period of inactivity
+2. [DONE] Em cada organização pelo menos uma role tem de ter a permissão ROLE_ACL.
+3. [DONE] Sessions have a lifetime defined by the Repository, and should be deleted upon a period of inactivity
 4. [DONE] Managers nunca podem ser "suspended"
 5. [DONE] Managers têm de ter sempre, em qualquer altura um utilizador "active"
-6. only the first role assigned in the session have permissions in the created document
-
-READ METADATA FROM DELETED DOC?
+6. [DONE] only the first role assigned in the session have permissions in the created document
 
 ## Testes
 

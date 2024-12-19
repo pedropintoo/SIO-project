@@ -27,4 +27,6 @@ def create_app():
     app.logger = logging.getLogger('app')
     logging.basicConfig(level=logging.DEBUG)
     
+    app.PERMISSIONS = {"ROLE_NEW", "ROLE_DOWN", "ROLE_UP", "ROLE_MOD", "ROLE_ACL", "SUBJECT_NEW", "SUBJECT_DOWN", "SUBJECT_UP", "DOC_NEW"}
+    
     return app

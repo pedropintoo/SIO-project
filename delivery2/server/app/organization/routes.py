@@ -15,6 +15,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
+
 @organization_bp.route('/', methods=['GET'])
 def list_orgs():
     return jsonify(current_app.organization_db.get_all_organizations()), 200
@@ -350,6 +351,11 @@ def add_permission_to_role():
     ############################ Logic of the endpoint ############################
     plaintext_role = plaintext.get("role")
     plaintext_permission = plaintext.get("permission")
+
+    if plaintext_permission not in current_app.PERMISSIONS:
+        response = {'error': f'Invalid permission "{plaintext_permission}"'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
 
     r = current_app.organization_db.add_permission_to_role(organization, plaintext_role, plaintext_permission)
     

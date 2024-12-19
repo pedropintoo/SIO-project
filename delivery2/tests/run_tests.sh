@@ -367,17 +367,21 @@ run_test failure "50. Remove ROLE_ACL from new_role" ./rep_remove_permission $se
 run_test failure "50(1). Remove ROLE_ACL from new_role" ./rep_remove_permission $session_file_5 $new_role ROLE_ACL # don't have ROLE_MOD
 
 # Add document
-# run_test success "51. Add user to Managers" ./rep_add_permission $session_file Managers $username
-# run_test success "51(1). Assume session role" ./rep_assume_role $session_file Managers
-# run_test success "42(1). Assume role new_role" ./rep_assume_role $session_file $new_role
+run_test success "51. List roles for session" ./rep_list_roles $session_file
+run_test failure "51(1). Add document" ./rep_add_doc $session_file $document_name_new $readme
+run_test success "51(2). Add DOC_NEW to new_role" ./rep_add_permission $session_file $new_role DOC_NEW
+run_test success "51(3). Add document" ./rep_add_doc $session_file $document_name_new $readme
+run_test success "51(4). Get the metadata of a document" ./rep_get_doc_metadata $session_file $document_name_new
 
-run_test success "51(2). List roles for session" ./rep_list_roles $session_file
-run_test failure "51(3). Add document" ./rep_add_doc $session_file $document_name_new $readme
-run_test success "51(4). Add DOC_NEW to new_role" ./rep_add_permission $session_file $new_role DOC_NEW
-run_test success "51(5). Add document" ./rep_add_doc $session_file $document_name_new $readme
-run_test success "51(6). Get the metadata of a document" ./rep_get_doc_metadata $session_file $document_name_new # don't have DOC_READ
+# Role that not create the file can't read it / delete it
+run_test failure "52. Get the metadata of a document" ./rep_get_doc_metadata $session_file_5 $document_name_new
+run_test failure "52(1). Delete a document" ./rep_delete_doc $session_file_5 $document_name_new
 
+# Add DOC_READ to new_role
+run_test success "53. Add DOC_READ to new_role" ./rep_acl_doc $session_file $document_name_new \+ Managers DOC_READ
+run_test success "53(1). Get the metadata of a document" ./rep_get_doc_metadata $session_file_5 $document_name_new
 
+# Delete a document
+run_test success "54. Add DOC_DEL to new_role" ./rep_acl_doc $session_file $document_name_new \+ Managers DOC_DELETE
+run_test success "54(1). Delete a document" ./rep_delete_doc $session_file_5 $document_name_new
 
-
-# 
