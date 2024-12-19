@@ -318,3 +318,29 @@ run_test success "38(1). List the subjects" ./rep_list_subjects $session_file
 
 run_test success "39. Releases the session role [Managers]" ./rep_drop_role $session_file Managers
 
+# List Metadata of a document
+run_test failure "40. Get the metadata of a document" ./rep_get_doc_metadata $session_file $document_name # don't have DOC_READ
+run_test success "40(1). Get the metadata of a document" ./rep_get_doc_metadata $session_file_5 $document_name
+
+# Add user to new_role_seed
+run_test failure "41. Add user to new_role" ./rep_add_permission $session_file $new_role $username_2 # (don't have ROLE_MOD)
+run_test success "41(1). Add user to new_role" ./rep_add_permission $session_file_5 $new_role $username
+
+# List Metadata of a document
+run_test failure "42. Get the metadata of a document" ./rep_get_doc_metadata $session_file $document_name
+run_test success "42(1). Assume role new_role" ./rep_assume_role $session_file $new_role
+run_test success "42(2). Get the metadata of a document" ./rep_get_doc_metadata $session_file $document_name
+
+# Remove DOC_ACL permission from Managers in a document
+run_test failure "43. Remove DOC_ACL permission from Managers in a document" ./rep_acl_doc $session_file $document_name \- Managers DOC_ACL # don't have (DOC_ACL)
+run_test failure "43(1). Remove DOC_ACL permission from Managers in a document" ./rep_acl_doc $session_file_5 $document_name \- Managers DOC_ACL  # at least one DOC_ACL per document
+
+# Add DOC_ACL permission to new_role in a document
+run_test success "44. Add DOC_ACL permission to new_role in a document" ./rep_acl_doc $session_file_5 $document_name \+ $new_role DOC_ACL
+run_test success "44(1). Get the metadata of a document" ./rep_get_doc_metadata $session_file_5 $document_name
+
+# Remove DOC_ACL permission from Managers in a document
+run_test success "45. Remove DOC_ACL permission from Managers in a document" ./rep_acl_doc $session_file_5 $document_name \- Managers DOC_ACL
+run_test fail "45(1). Remove DOC_ACL permission from Other role in a document" ./rep_acl_doc $session_file $document_name \- $new_role DOC_ACL
+
+

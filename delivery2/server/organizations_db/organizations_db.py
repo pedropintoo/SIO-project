@@ -643,9 +643,11 @@ class OrganizationsDB:
         if not self.collection.find_one({"name": organization_name, f"documents_metadata.{document_handle}": {"$exists": True}}):
             return None
         
+        document_handle = get_document_handle(organization_name, document_name)
+        
         result = self.collection.update_one(
             {"name": organization_name},
-            {"$pull": {f"documents_metadata.{document_name}.document_acl.{role_name}": permission}}
+            {"$pull": {f"documents_metadata.{document_handle}.document_acl.{role_name}": permission}}
         )
 
         if not result:
@@ -653,7 +655,8 @@ class OrganizationsDB:
 
         return result.modified_count
     
-    def has_one_DOC_ACL_in_document_after_remove(self, organization_name, document_name, role_name, permission):
+    def has_one_DOC_ACL_in_document_after_remove(self, logger, organization_name, document_name, role_name, permission):
+        logger.critical(f"permission: {permission}")
         if permission != "DOC_ACL":
             return True
         
@@ -663,17 +666,21 @@ class OrganizationsDB:
         )
         if not result:
             return None  # Organization not found
+        logger.critical(f"result: {result}")
 
         documents_metadata = result.get("documents_metadata", {})
-        document = documents_metadata.get(document_name)
+        document_handle = get_document_handle(organization_name, document_name)
+        document = documents_metadata.get(document_handle)
         if not document:
             return None  # Document not found
 
+        logger.critical(f"document: {document}")
+        
         document_acl = document.get("document_acl", {})
         if role_name not in document_acl:
             return None  # Role not found in document_acl
 
-        remaining_permissions_for_role = [
+        document_acl[role_name] = [
             perm for perm in document_acl.get(role_name, []) if perm != permission
         ]
 
@@ -681,6 +688,7 @@ class OrganizationsDB:
             if other_role == role_name:
                 continue  # Skip the role we're modifying
             if "DOC_ACL" in permissions:
+                logger.info(f"Role {other_role} still has DOC_ACL")
                 return True  # Another role still has DOC_ACL
 
         return False    

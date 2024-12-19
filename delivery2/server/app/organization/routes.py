@@ -1178,8 +1178,8 @@ def update_acl_doc():
         
     elif plaintext_operation == "-":
         
-        if not current_app.organization_db.has_one_DOC_ACL_in_document_after_remove(organization, plaintext_document_name, plaintext_role, plaintext_permission):
-            response = {'error': f'At least one role must keep this right for each document, in order to allow an ACL to be updated'}            
+        if not current_app.organization_db.has_one_DOC_ACL_in_document_after_remove(current_app.logger, organization, plaintext_document_name, plaintext_role, plaintext_permission):
+            response = {'error': f'At least one role must keep this right (DOC_ACL) for each document, in order to allow an ACL to be updated'}            
             data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
             return jsonify(data), 409
         

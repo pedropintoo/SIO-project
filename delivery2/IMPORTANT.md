@@ -1,12 +1,13 @@
 ## Regras
 
-1. Pelo menos uma role tem de ter **DOC_ACL** por documento.
+1. [DONE] Pelo menos uma role tem de ter **DOC_ACL** por documento.
 2. Em cada organização pelo menos uma role tem de ter a permissão ROLE_ACL.
 3. Sessions have a lifetime defined by the Repository, and should be deleted upon a period of inactivity
-4. Managers nunca podem ser "suspended"
-5. Managers têm de ter sempre, em qualquer altura um utilizador "active"
+4. [DONE] Managers nunca podem ser "suspended"
+5. [DONE] Managers têm de ter sempre, em qualquer altura um utilizador "active"
+6. only the first role assigned in the session have permissions in the created document
 
-extra: only the first role assigned in the session have permissions in the created document
+READ METADATA FROM DELETED DOC?
 
 ## Testes
 
@@ -24,4 +25,3 @@ Se o servidor mudar o ficheiro e tentarmos desencriptar temos de verificar o dig
  - **rep_get_doc_file** 
  - **rep_decrypt**
 - **add_permission_to_document** (não é comando mas tem de ser testado!)
-

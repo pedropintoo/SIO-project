@@ -8,6 +8,32 @@
 
 We mantained the same structure as in the previous delivery.
 
+## Structure
+ - `client/` - contains the client side code
+ - `server/` - contains the server side code
+ - `views/` - contains the classes for the views
+
+In this work, we utilised MongoDB as the primary database to manage organisational data, including documents, metadata, and user information. 
+
+
+## How to run the code
+
+Server:
+```bash
+docker compose up --build
+```
+
+Client:
+```bash
+python3 subject.py <command> <args>
+```
+
+Tests:
+```bash
+cd tests
+./run_tests
+```
+
 ## Features Implemented
 
 ## Common Processes in Command Execution
@@ -80,9 +106,10 @@ The command `rep_remove_permission` removes a specified permission or subject fr
 The server validates the session, checks authorisation, and updates the role's permissions or subjects list. The client displays the server's response.
 
 #### Update Document ACL
-
+    
 The command `rep_acl_doc` modifies the Access Control List (ACL) of a document by either adding (`+`) or removing (`-`) a permission for a specified role. It sends a POST request to the `/api/v1/organizations/documents/acl` endpoint with the document name, operation, role, and permission as part of the encrypted payload. This operation requires the user to hold the `DOC_ACL` permission.
 
 On the server side, the required `DOC_ACL` permission for the specified document is checked. If the operation is `+`, the server adds the permission to the document's ACL for the given role. If the operation is `-`, the server removes the specified permission. For invalid operations or non-existent roles, permissions, or documents, an appropriate error message is returned.
 
 The client decapsulates the server's response and displays the outcome of the operation.
+
