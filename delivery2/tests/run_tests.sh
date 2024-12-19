@@ -109,7 +109,9 @@ user_credentials_5="state/user_credentials_5_$random_seed.pem"
 email_5="email_5_$random_seed"
 
 document_name="requirements_$random_seed"
+document_name_new="README.md"
 file="../requirements.txt"
+readme="../README.md"
 
 session_file="state/session_file1__$random_seed"
 session_file_2="state/session_file2__$random_seed"
@@ -188,9 +190,9 @@ run_test_output success "$username_new: active" "9(5). Lists the organization's 
 # run_test failure "12(1). Lists the roles of a subject" ./rep_list_subject_roles $session_file ${username}_not_found
 
 # ## Lists the permissions of a role
-# run_test success "13. Lists the permissions of a role" ./rep_list_role_permissions $session_file Managers
-# run_test failure "13(1). Lists the permissions of a role" ./rep_list_role_permissions $session_file \"Not Found\"
-# run_test success "13(2). Lists the permissions of a role" ./rep_list_role_permissions $session_file_3 Managers
+run_test success "13. Lists the permissions of a role" ./rep_list_role_permissions $session_file Managers
+run_test failure "13(1). Lists the permissions of a role" ./rep_list_role_permissions $session_file \"Not Found\"
+run_test success "13(2). Lists the permissions of a role" ./rep_list_role_permissions $session_file_3 Managers
 
 # ## Add a document to the organization (this command needs authorization!!! - `DOC_NEW` permission)
 run_test success "14. Add a document to the organization" ./rep_add_doc $session_file $document_name $file
@@ -202,7 +204,7 @@ run_test success "14(4). Add a document to the organization" ./rep_add_doc $sess
 # ## Lists the roles that have a permission
 # run_test success "15. Lists the roles that have a permission" ./rep_list_permission_roles $session_file SUBJECT_NEW
 # run_test success "15(1). Lists the roles that have a permission" ./rep_list_permission_roles $session_file \"Not Found\" # TODO: ask Alfredo, should return [] or error?
-# run_test success "15(2). Lists the roles that have a permission" ./rep_list_permission_roles $session_file DOC_READ
+run_test success "15(2). Lists the roles that have a permission" ./rep_list_permission_roles $session_file DOC_READ
 # #TODO: make tests with multiple roles per file!!!!
 
 # ## Lists the documents of the organization
@@ -363,3 +365,19 @@ run_test success "49(1). Remove ROLE_MOD from Managers" ./rep_remove_permission 
 # Try (failure) remove from new_role
 run_test failure "50. Remove ROLE_ACL from new_role" ./rep_remove_permission $session_file $new_role ROLE_ACL # at least one ROLE_ACL per organization
 run_test failure "50(1). Remove ROLE_ACL from new_role" ./rep_remove_permission $session_file_5 $new_role ROLE_ACL # don't have ROLE_MOD
+
+# Add document
+# run_test success "51. Add user to Managers" ./rep_add_permission $session_file Managers $username
+# run_test success "51(1). Assume session role" ./rep_assume_role $session_file Managers
+# run_test success "42(1). Assume role new_role" ./rep_assume_role $session_file $new_role
+
+run_test success "51(2). List roles for session" ./rep_list_roles $session_file
+run_test failure "51(3). Add document" ./rep_add_doc $session_file $document_name_new $readme
+run_test success "51(4). Add DOC_NEW to new_role" ./rep_add_permission $session_file $new_role DOC_NEW
+run_test success "51(5). Add document" ./rep_add_doc $session_file $document_name_new $readme
+run_test success "51(6). Get the metadata of a document" ./rep_get_doc_metadata $session_file $document_name_new # don't have DOC_READ
+
+
+
+
+# 
