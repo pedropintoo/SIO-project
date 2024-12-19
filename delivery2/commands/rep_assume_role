@@ -1,2 +1,0 @@
-#!/bin/bash
-python3 ../subject.py rep_assume_role $1 $2

@@ -1,2 +1,0 @@
-#!/bin/bash
-python3 ../subject.py rep_list_role_permissions $1 $2
