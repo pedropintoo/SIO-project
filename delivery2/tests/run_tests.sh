@@ -344,3 +344,22 @@ run_test success "45. Remove DOC_ACL permission from Managers in a document" ./r
 run_test fail "45(1). Remove DOC_ACL permission from Other role in a document" ./rep_acl_doc $session_file $document_name \- $new_role DOC_ACL
 
 
+# List permission by role
+run_test success "46. List permission by role" ./rep_list_roles $session_file
+run_test success "46(1). List permission by role" ./rep_list_roles $session_file_5
+
+
+# Remove ROLE_ACL permission from Managers in a document (failure)
+run_test failure "47. Remove ROLE_ACL permission from Managers in a document" ./rep_remove_permission $session_file_5 Managers ROLE_ACL
+
+# Add ROLE_ACL to new_role 
+run_test success "48. Add ROLE_ACL to new_role" ./rep_add_permission $session_file_5 $new_role ROLE_ACL
+run_test success "48. Add ROLE_MOD to new_role" ./rep_add_permission $session_file_5 $new_role ROLE_MOD
+
+# Remove from Managers
+run_test success "49. Remove ROLE_ACL from Managers" ./rep_remove_permission $session_file_5 Managers ROLE_ACL
+run_test success "49(1). Remove ROLE_MOD from Managers" ./rep_remove_permission $session_file_5 Managers ROLE_MOD
+
+# Try (failure) remove from new_role
+run_test failure "50. Remove ROLE_ACL from new_role" ./rep_remove_permission $session_file $new_role ROLE_ACL # at least one ROLE_ACL per organization
+run_test failure "50(1). Remove ROLE_ACL from new_role" ./rep_remove_permission $session_file_5 $new_role ROLE_ACL # don't have ROLE_MOD
