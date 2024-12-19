@@ -22,3 +22,4 @@ Se o servidor mudar o ficheiro e tentarmos desencriptar temos de verificar o dig
 # FALTA TESTAR!!:
  - **rep_get_doc_file** 
  - **rep_decrypt**
+- **add_permission_to_document** (não é comando mas tem de ser testado!)
