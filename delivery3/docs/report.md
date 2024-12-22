@@ -29,7 +29,7 @@ We chose to explain the workflow of creating an organization, creating a session
 
 1. **Creating an Organization**  
    The workflow for creating an organization includes securely sending the organization data to the server, storing it in the database, and validating the response.  
-   ![Creating an Organization](../utils/xpto.png)
+   ![Creating an Organization](../utils/diagrams/createOrganization.png)
 
     <!-- creating_organization -->
 
@@ -55,16 +55,16 @@ We chose to explain the workflow of creating an organization, creating a session
       The client verifies the server’s signature using the server's public key. It computes the `shared_key` and derives the same `derived_key` using the server’s ephemeral public key. Finally, the session details are saved to a `session_file` on the client side for future use.
 
    These cryptographic processes are illustrated in the sequence diagram below.  
-   ![Creating a Session](../utils/diagrams/createSessionDiagram.png)
+   ![Creating a Session](../utils/diagrams/createSession.png)
    
    <!-- creating_session -->
 
 3. **Communicating with the Repository**
-   To illustrate the secure communication mechanisms in the Repository, we provide an example of how a file is downloaded using its handle.
 
+   To illustrate the secure communication mechanisms in the Repository, we provide an example of how a file is downloaded using its handle.
    The workflow for downloading a file ensures the integrity and authenticity of the retrieved content. The client requests the file using its handle, and the server locates the file and returns its content along with a cryptographic signature. The signature, generated using the server's private key, allows the client to verify the authenticity and integrity of the file, ensuring it has not been tampered with during transmission. Upon successful validation, the client can write the file content to a specified location or output it to stdout.
 
-   ![Downloading a File](../utils/xpto.png)  
+   ![Downloading a File](../utils/diagrams/downloadFile.png)  
 
    <!-- downloading_file -->
 
@@ -120,7 +120,7 @@ We choose to explain the workflow of assuming a role as an example of the comman
 1. **Assume a Role**  
 The workflow for assuming a role allows a user to assume a specific role associated with their session. The client sends a request to the server, including the desired role. The server validates the user's active status and checks whether the user holds the requested role in the organization. If authorized, the server updates the session to include the role, and the client reflects this change in the local session file. This ensures role-based access control and prevents unauthorized role assignments.  
 
-   ![Assume a Role](../utils/xpto.png)  
+   ![Assume a Role](../utils/diagrams/assumeRole.png)  
 
    <!-- assume_role -->
 
@@ -134,8 +134,7 @@ We chose to explain the workflow of adding a subject to an organization as an ex
 
 The workflow for adding a new subject to an organization begins with the client preparing the required data, including the subject's `username`, `name`, `email`, and `public key`. The public key is read from a credentials file, serialized, and included in the request. This information is encapsulated and encrypted using the session's derived_key for confidentiality and integrity. Once the server receives the data, it validates the session, checks the user's active state, and ensures that the session includes the `SUBJECT_NEW` permission. If these checks pass, the server adds the new subject to the organization's database with default properties, such as an "active" state. Finally, the server responds with a confirmation message, encapsulated and encrypted for secure transmission back to the client.
 
-![Adding a Subject to an Organization](../utils/xpto.png)
-
+![Adding a Subject to an Organization](../utils/diagrams/addSubject.png)
 <!-- add_subject -->
 
 
