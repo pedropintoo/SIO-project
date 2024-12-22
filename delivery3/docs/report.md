@@ -22,9 +22,6 @@ The following sequence diagrams illustrate the secure workflows implemented in t
 
 1. **Creating a Subject**  
    The process for creating a subject involves deriving a private key from the password using ECC (Elliptic-curve Cryptography), generating a public key, and securely storing the information in the organization’s database.  
-   ![Creating a Subject](../utils/xpto.png)
-
-    <!-- creating_subject -->
 
 ### **2.2 Commands that use the anonymous API**
 
@@ -58,13 +55,14 @@ We chose to explain the workflow of creating an organization, creating a session
       The client verifies the server’s signature using the server's public key. It computes the `shared_key` and derives the same `derived_key` using the server’s ephemeral public key. Finally, the session details are saved to a `session_file` on the client side for future use.
 
    These cryptographic processes are illustrated in the sequence diagram below.  
-   ![Creating a Session](../utils/xpto.png)
-
+   ![Creating a Session](../utils/diagrams/createSessionDiagram.png)
+   
    <!-- creating_session -->
 
-3. **Downloads a file given its handle**
-   
-   The workflow for downloading a file ensures the integrity and authenticity of the retrieved content. The client requests the file using its handle, and the server locates and returns the file content along with a cryptographic signature. The signature, generated using the server's private key, verifies the integrity of the file and prevents man-in-the-middle attacks. Upon validation, the client can write the file content to the desired location or output it to stdout.  
+3. **Communicating with the Repository**
+   To illustrate the secure communication mechanisms in the Repository, we provide an example of how a file is downloaded using its handle.
+
+   The workflow for downloading a file ensures the integrity and authenticity of the retrieved content. The client requests the file using its handle, and the server locates the file and returns its content along with a cryptographic signature. The signature, generated using the server's private key, allows the client to verify the authenticity and integrity of the file, ensuring it has not been tampered with during transmission. Upon successful validation, the client can write the file content to a specified location or output it to stdout.
 
    ![Downloading a File](../utils/xpto.png)  
 
@@ -72,14 +70,6 @@ We chose to explain the workflow of creating an organization, creating a session
 
 ### **2.3 Commands that use the authenticated API**
 
-We choose to explain the workflow of assuming a role as an example of the commands that use the authenticated API. In this chapter, we will also explain how the communication between the client and the server occurs.
-
-1. **Assume a Role**  
-The workflow for assuming a role allows a user to assume a specific role associated with their session. The client sends a request to the server, including the desired role. The server validates the user's active status and checks whether the user holds the requested role in the organization. If authorized, the server updates the session to include the role, and the client reflects this change in the local session file. This ensures role-based access control and prevents unauthorized role assignments.  
-
-   ![Assume a Role](../utils/xpto.png)  
-
-   <!-- assume_role -->
 
 ### **Secure Communication Workflow**
 
@@ -125,6 +115,16 @@ Here is how it works:
 
 This process ensures that every step of the communication is secure, authenticated, and resistant to attacks, such as replay and man-in-the-middle attacks.
 
+We choose to explain the workflow of assuming a role as an example of the commands that use the authenticated API. In this chapter, we will also explain how the communication between the client and the server occurs.
+
+1. **Assume a Role**  
+The workflow for assuming a role allows a user to assume a specific role associated with their session. The client sends a request to the server, including the desired role. The server validates the user's active status and checks whether the user holds the requested role in the organization. If authorized, the server updates the session to include the role, and the client reflects this change in the local session file. This ensures role-based access control and prevents unauthorized role assignments.  
+
+   ![Assume a Role](../utils/xpto.png)  
+
+   <!-- assume_role -->
+
+
 ### **2.4 Commands that use the authorized API**
 
 All these commands use as first parameter a file with the session key. For that session, the subject must have added one or more roles.
@@ -137,5 +137,6 @@ The workflow for adding a new subject to an organization begins with the client 
 ![Adding a Subject to an Organization](../utils/xpto.png)
 
 <!-- add_subject -->
+
 
 
