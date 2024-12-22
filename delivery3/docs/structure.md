@@ -10,13 +10,24 @@
 ---
 
 ## **2. Secure Operations**
-### **2.1 Sequence Diagrams**
+
+### **2.1 Local commands**
+
+### **2.2 Commands that use the anonymous API**
+
+### **2.3 Commands that use the authenticated API**
+
+### **2.4 Commands that use the authorized API**
+
+### **Sequence Diagrams**
+
 - Diagrams illustrating secure workflows for:
   - Creating a subject.
   - Creating an organization.
   - Creating a session.
 
-### **2.2 Secure Operations Overview**
+### **Secure Operations Overview**
+
 - Brief explanations of the secure mechanisms employed in the project:
   1. **PBKDF2HMAC**: Derivation of master keys.
   2. **ECC**: Generation of private and public keys, and secure key exchanges.
