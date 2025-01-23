@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
 from cryptography.exceptions import InvalidSignature
 import json
+from datetime import datetime
 
 @auth_bp.route('/organization', methods=['POST'])
 def create_organization():
@@ -19,11 +20,7 @@ def create_organization():
         return jsonify({'error': 'Missing required fields'}), 400
 
     organization_name, username, name, email, public_key = [data[field] for field in required_fields]
-    
-    # Use method in_database to check if organization already exists
-    if current_app.organization_db.in_database(organization_name):
-        return jsonify({'error': 'Organization already exists'}), 400
-    
+        
     organization = {
         "name": organization_name,  
         "subjects": {
@@ -48,7 +45,10 @@ def create_organization():
         "documents_metadata": {} 
     }
     
-    current_app.organization_db.insert_organization(organization)
+    r = current_app.organization_db.insert_organization(organization)
+    
+    if not r:
+        return jsonify({'error': 'Organization already exists'}), 400
         
     password = current_app.MASTER_KEY.encode("utf-8")
     secret_key = ec.derive_private_key(int.from_bytes(password, 'big'), current_app.EC_CURVE, default_backend())
@@ -130,7 +130,9 @@ def create_session():
             'organization': organization,
             'username': username,
             'derived_key': derived_key_hex,
-            'msg_id': 0
+            'msg_id': 0,
+            'roles': [],
+            'expiration_date': datetime.now() + current_app.SESSION_EXPIRATION_TIME
         }
         
         associated_data = {
@@ -159,8 +161,3 @@ def create_session():
     except InvalidSignature:
         return jsonify({'error': 'Invalid signature'}), 400
     
-
-@auth_bp.route('/session/<int:session_id>', methods=['POST'])
-def refresh_session_keys(session_id):
-    # TODO: Logic to refresh session keys
-    ...

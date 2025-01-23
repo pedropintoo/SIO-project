@@ -1,0 +1,10 @@
+{
+    "session_id": 2,
+    "organization": "new_org",
+    "username": "new_utilizador_teste",
+    "derived_key": "5be69164b30501af25a943852369cd5b557bb9a2317bc7125cdcddd4ab315b69",
+    "msg_id": 2,
+    "roles": [
+        "Futebolista"
+    ]
+}

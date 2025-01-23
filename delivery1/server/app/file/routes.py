@@ -14,9 +14,12 @@ def get_file():
     file_handle = data.get('file_handle')
     
     file_content = None
-    with open(f"{current_app.files_location}{file_handle}", "rb") as file:
-        file_content = file.read()
-    file_content_string = base64.b64encode(file_content).decode("utf-8")
+    try:
+        with open(f"{current_app.files_location}{file_handle}", "rb") as file:
+            file_content = file.read()
+        file_content_string = base64.b64encode(file_content).decode("utf-8")
+    except Exception as e:
+        return jsonify({'error': 'File not found'}), 404
     
     password = current_app.MASTER_KEY.encode("utf-8")
     secret_key = ec.derive_private_key(int.from_bytes(password, 'big'), current_app.EC_CURVE, default_backend())

@@ -60,8 +60,8 @@
       "deleter": null,
       "alg": "AES 256",
       "key": "AAPDLBDALJOIASDA",
-      "key_salt": "asdsadadasda",
-      "key_nonce": "asdasdasdasd"
+      "key_salt": "AAAAAAAAAAAAAA",
+      "key_nonce": "BBBBBBBBBBBBBB"
     },
     "98e442c2-57cb-4dca-b903-38f4881c47db": {
       "name": "document 2",
@@ -75,11 +75,8 @@
       "deleter": null,
       "alg": "AES 256",
       "key": "ASDAR2131232131",
-      "key_salt": "asdsadadasda",
-      "key_nonce": "asdasdasdasd"
+      "key_salt": "CCCCCCCCCCCCCCCC",
+      "key_nonce": "DDDDDDDDDDDDDDDD"
     }
   }
 }
-
-
-
