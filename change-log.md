@@ -1,4 +1,4 @@
-## Changes Made for the Report
+## Changes Made for the Supplementary Season
 
 **Delivery 1:**
 - We added argument validation to the following commands: `rep_create_session`, `rep_suspend_subject`, `rep_add_doc`, `rep_get_doc_metadata`, `rep_get_doc_file`, `rep_delete_doc`.
