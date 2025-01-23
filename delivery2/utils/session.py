@@ -78,10 +78,6 @@ def decapsulate_session_data(data, sessions, check_expiration_date=True):
     if check_expiration_date and datetime.now() > session['expiration_date']:
         raise Exception(f'Session {session_id} has already expired!')
     
-    # Check for replays
-    if msg_id <= session['msg_id']:
-        raise Exception(f'Replay attack detected for session {session_id}')
-    
     # Get session details
     organization = session['organization']
     username = session['username']
@@ -95,6 +91,10 @@ def decapsulate_session_data(data, sessions, check_expiration_date=True):
     
     except Exception as e:
         raise Exception(f'Error decrypting data for session {session_id} ({e})')
+
+    # Check for replays
+    if msg_id <= session['msg_id']:
+        raise Exception(f'Replay attack detected for session {session_id}')
 
     plaintext = json.loads(plaintext_bytes.decode("utf-8"))
     
@@ -134,6 +134,9 @@ def send_session_data(logger, server_address, command, endpoint, session_file, p
         request_func = requests.delete    
 
     result = request_func(f'{server_address}{endpoint}', json={'associated_data': data["associated_data"], 'encrypted_data': data["encrypted_data"]})
+
+    if result.status_code == 499:     
+        raise Exception(f'[{result.status_code}] {result.text}')
 
     sessions = {session_id: {"msg_id": msg_id, "organization": organization, "derived_key": derived_key_hex, "username": usernameSession}}
     plaintext, _, _, msg_id, _, _ = decapsulate_session_data(json.loads(result.text), sessions, check_expiration_date=False) # no expiration is needed in the client side!

@@ -24,8 +24,12 @@ def list_orgs():
 @organization_bp.route('/roles/subjects', methods=['GET'])
 def list_role_subjects():
     # Subjects of a role of the organization with which I have currently a session.
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -66,8 +70,12 @@ def list_role_subjects():
 @organization_bp.route('/roles/permissions', methods=['GET'])
 def list_role_permissions():
     # Permissions of a role of the organization with which I have currently a session.
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -107,8 +115,12 @@ def list_role_permissions():
 
 @organization_bp.route('/roles', methods=['POST'])
 def add_role():
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -221,11 +233,25 @@ def add_role():
 @organization_bp.route('/roles/suspend', methods=['PUT'])
 def suspend_role():
     # Suspends a role in the organization with which I have currently a session. This command requires a ROLE_DOWN permission.
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################## Can't suspend Managers role ##############################
+
+    # Debugging
+    current_app.logger.debug(f"plaintext: {plaintext}")
+
+    if plaintext.get("role") == "Managers":
+        response = {'error': 'The Managers role can never be suspended'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
 
     ############################## Check Active User ##############################
     user_data = current_app.organization_db.retrieve_subject(organization, username)
@@ -242,7 +268,7 @@ def suspend_role():
         response = {'error': 'User does not have a "ROLE_DOWN" permission to suspend a role'}
         data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
         return jsonify(data), 403
-    
+
     ############################ Logic of the endpoint ############################
     plaintext_role = plaintext.get("role")
 
@@ -276,8 +302,12 @@ def suspend_role():
 @organization_bp.route('/roles/reactivate', methods=['PUT'])
 def reactivate_role():
     # Reactivate a role in the organization with which I have currently a session. This command requires a ROLE_UP permission.
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -326,8 +356,12 @@ def reactivate_role():
 @organization_bp.route('/roles/permissions', methods=['POST'])
 def add_permission_to_role():
     # Add a permission to a role of the organization with which I have currently a session. This command requires a ROLE_MOD permission.
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -382,8 +416,12 @@ def add_permission_to_role():
 @organization_bp.route('/roles/permissions', methods=['DELETE'])
 def remove_permission_from_role():
     # Remove a permission from a role of the organization with which I have currently a session. This command requires a ROLE_MOD permission.
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try: 
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -438,8 +476,12 @@ def remove_permission_from_role():
 @organization_bp.route('/roles/subjects', methods=['POST'])
 def add_subject_to_role():
     # Add a subject to a role of the organization with which I have currently a session. This command requires a ROLE_MOD permission.
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -489,7 +531,11 @@ def add_subject_to_role():
 @organization_bp.route('/roles/subjects', methods=['DELETE'])
 def remove_subject_from_role():
     # Remove a subject from a role of the organization with which I have currently a session. This command requires a ROLE_MOD permission.
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
 
     # Update session msg_id
     msg_id += 1
@@ -545,8 +591,12 @@ def remove_subject_from_role():
 # Subjects Endpoints
 @organization_bp.route("/subjects", methods=['POST'])
 def add_subject():
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -605,8 +655,12 @@ def add_subject():
 @organization_bp.route('/subjects/roles', methods=['GET'])
 def list_subject_roles():
     # Roles of a subject of the organization with which I have currently a session.
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -646,7 +700,11 @@ def list_subject_roles():
 
 @organization_bp.route('/subjects/state', methods=['PUT'])
 def update_subject_state():
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
 
     # Update session msg_id
     msg_id += 1
@@ -734,8 +792,12 @@ def update_subject_state():
 
 @organization_bp.route('/subjects/state', methods=['GET'])
 def list_all_subjects_state():
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -785,8 +847,12 @@ def list_all_subjects_state():
 @organization_bp.route('/permissions/roles', methods=['GET'])
 def list_permission_roles():
     # Roles of the organization with which I have currently a session that have a given permission.
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -827,8 +893,12 @@ def list_permission_roles():
 # Documents Endpoints
 @organization_bp.route("/documents", methods=['GET'])
 def list_documents():
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -874,8 +944,12 @@ def list_documents():
     
 @organization_bp.route("/documents", methods=['POST'])
 def create_document():
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -983,8 +1057,12 @@ def create_document():
 def get_document_metadata():
     # Fetches the metadata of a document with a given name to the organization with which I have currently a session. The output of this command is useful for getting the clear text contents of a document’s file. This commands requires a DOC_READ permission.
 
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -1063,9 +1141,12 @@ def get_document_metadata():
 @organization_bp.route("/documents/", methods=['DELETE'])
 def delete_document():
     # clears file_handle in the metadata of a document with a given name on the organization with which I have currently a session. The output of this command is the file_handle that ceased to exist in the document’s metadata. This commands requires a DOC_DELETE permission.
-
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-    
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -1145,8 +1226,12 @@ def delete_document():
 @organization_bp.route("/documents/acl", methods=['POST'])
 def update_acl_doc():
     # Changes the ACL of a document by adding (+) or removing (-) a permission for a given role. Use the names previously referred for the permission rights. This commands requires a DOC_ACL permission.
-    plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id

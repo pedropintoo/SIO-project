@@ -332,6 +332,14 @@ class OrganizationsDB:
             return None
 
         return result.modified_count
+
+    def check_role_suspended(self, organization_name, role_name):
+        organization = self.collection.find_one({"name": organization_name})
+
+        if not organization:
+            return False
+
+        return self.role_state(organization, role_name) == 'suspended'
     
     def reactivate_role(self, organization_name, role_name):
         if not self.collection.find_one({"name": organization_name, f"roles.{role_name}": {"$exists": True}}):

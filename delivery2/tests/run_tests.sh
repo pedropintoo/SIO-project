@@ -163,7 +163,7 @@ run_test success "6(4). Create a session" ./rep_create_session $organization_nam
 
 ## Assume session role
 run_test success "7. Assume session role" ./rep_assume_role $session_file Managers
-run_test failure "7(1). Assume session role" ./rep_assume_role $session_file \"Not Found\"
+run_test failure "7(1). Assume session role" ./rep_assume_role $session_file \"Not_Found\"
 run_test success "7(2). Assume session role" ./rep_assume_role $session_file Managers # same role
 run_test success "7(4). Assume session role" ./rep_assume_role $session_file_3 Managers # another org, is valid (since he has the role)
 
@@ -186,7 +186,7 @@ run_test success "10. Lists only one subject's status" ./rep_list_subjects $sess
 
 ## Lists the subjects of a role
 run_test success "11. Lists the subjects of a role" ./rep_list_role_subjects $session_file Managers
-run_test failure "11(1). Lists the subjects of a role" ./rep_list_role_subjects $session_file \"Not Found\"
+run_test failure "11(1). Lists the subjects of a role" ./rep_list_role_subjects $session_file \"Not_Found\"
 
 ## Lists the roles of a subject 
 run_test success "12. Lists the roles of a subject" ./rep_list_subject_roles $session_file $username
@@ -194,7 +194,7 @@ run_test failure "12(1). Lists the roles of a subject" ./rep_list_subject_roles 
 
 # ## Lists the permissions of a role
 run_test success "13. Lists the permissions of a role" ./rep_list_role_permissions $session_file Managers
-run_test failure "13(1). Lists the permissions of a role" ./rep_list_role_permissions $session_file \"Not Found\"
+run_test failure "13(1). Lists the permissions of a role" ./rep_list_role_permissions $session_file \"Not_Found\"
 run_test success "13(2). Lists the permissions of a role" ./rep_list_role_permissions $session_file_3 Managers
 
 # ## Add a document to the organization (this command needs authorization!!! - `DOC_NEW` permission)
@@ -206,7 +206,7 @@ run_test success "14(4). Add a document to the organization" ./rep_add_doc $sess
 
 # ## Lists the roles that have a permission
 run_test success "15. Lists the roles that have a permission" ./rep_list_permission_roles $session_file SUBJECT_NEW
-run_test success "15(1). Lists the roles that have a permission" ./rep_list_permission_roles $session_file \"Not Found\" # TODO: ask Alfredo, should return [] or error?
+run_test success "15(1). Lists the roles that have a permission" ./rep_list_permission_roles $session_file \"Not_Found\" # TODO: ask Alfredo, should return [] or error?
 run_test success "15(2). Lists the roles that have a permission" ./rep_list_permission_roles $session_file DOC_READ
 # #TODO: make tests with multiple roles per file!!!!
 

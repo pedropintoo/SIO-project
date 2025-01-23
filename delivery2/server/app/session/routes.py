@@ -6,11 +6,24 @@ from utils.session import decapsulate_session_data, encapsulate_session_data
 
 @session_bp.route('/roles', methods=['POST'])
 def assume_session_role():
-    plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    try:
+        plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:
+        data = f'Error: {e}'
+        return jsonify(data), 499
 
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
+
+    ############################## Can't assume roles if user has that role suspended ##############################
+    role = plaintext.get('role')
+    role_state = current_app.organization_db.check_role_suspended(organization_name, role)
+
+    if role_state == True:
+        response = {'error': 'Can not assume a role that is suspended'}
+        data = encapsulate_session_data(response, session_id, derived_key_hex, msg_id)
+        return jsonify(data), 403
 
     ############################## Check Active User ##############################
     user_data = current_app.organization_db.retrieve_subject(organization_name, username)
@@ -54,7 +67,11 @@ def assume_session_role():
 
 @session_bp.route('/roles', methods=['DELETE'])
 def drop_session_role():
-    plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    try:
+        plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
 
     # Update session msg_id
     msg_id += 1
@@ -98,8 +115,12 @@ def drop_session_role():
 @session_bp.route('/roles', methods=['GET'])
 def list_session_roles():
     # TODO: Logic to list session roles
-    plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
-
+    try:
+        plaintext, organization_name, username, msg_id, session_id, derived_key_hex = decapsulate_session_data(request.get_json(), current_app.sessions)
+    except Exception as e:   
+        data = f'Error: {e}'
+        return jsonify(data), 499
+        
     # Update session msg_id
     msg_id += 1
     current_app.sessions[session_id]['msg_id'] = msg_id
@@ -132,8 +153,3 @@ def list_session_roles():
 
     return jsonify(data), 200
 
-
-# @session_bp.route('/roles', methods=['DELETE'])
-# def refresh_session_keys():
-#     # TODO: Logic to release session roles
-#     ...

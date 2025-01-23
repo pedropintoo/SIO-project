@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 ../subject.py rep_create_session $1 $2 $3 $4 $5
+python3 ../subject.py rep_create_session $@

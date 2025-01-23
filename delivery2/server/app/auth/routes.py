@@ -161,8 +161,3 @@ def create_session():
     except InvalidSignature:
         return jsonify({'error': 'Invalid signature'}), 400
     
-
-@auth_bp.route('/session/<int:session_id>', methods=['POST'])
-def refresh_session_keys(session_id):
-    # TODO: Logic to refresh session keys
-    ...

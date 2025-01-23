@@ -19,7 +19,7 @@ def create_app():
 
     # Sessions data structure
     app.sessions = {}
-    app.SESSION_EXPIRATION_TIME = timedelta(minutes=5)
+    app.SESSION_EXPIRATION_TIME = timedelta(minutes=50)
     app.organization_db = OrganizationsDB()
     app.EC_CURVE = ec.SECP256R1()
     app.files_location = os.getenv('FILES_LOCATION')

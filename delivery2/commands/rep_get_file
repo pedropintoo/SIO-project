@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 ../subject.py rep_get_file $1 $2
+python3 ../subject.py rep_get_file $@
