@@ -1,9 +1,9 @@
 {
-    "session_id": 2,
+    "session_id": 69,
     "organization": "new_org",
     "username": "utilizador_teste",
-    "derived_key": "b736f9523c95c49030cdee21bdc8ea85aaa3203cb7e7007a343d2d409c65e174",
-    "msg_id": 50,
+    "derived_key": "3336e98b5d0fa53cce3208ea9e13652e09fa80987c8258df6b9024b242475aca",
+    "msg_id": 58,
     "roles": [
         "Managers"
     ]

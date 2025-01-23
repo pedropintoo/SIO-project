@@ -793,7 +793,9 @@ class Organization(Command):
             session_file,
             plaintext
         )
-        print(result)
+        
+        sys.stdout.buffer.write(json.dumps(result).encode())
+        
         return result
     
     # ---- Next iteration ----
