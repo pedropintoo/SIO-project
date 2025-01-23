@@ -1,0 +1,11 @@
+{
+    "session_id": 68,
+    "organization": "org_9625",
+    "username": "user_2_9625",
+    "derived_key": "2964897b5cac4816f181d8f73550412b8cf020f59c460d6ee53fc6e99672e3d9",
+    "msg_id": 50,
+    "roles": [
+        "new_role_9625",
+        "Managers"
+    ]
+}

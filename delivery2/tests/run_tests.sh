@@ -397,9 +397,9 @@ run_test success "55(3) Get document file to a file" ./rep_get_doc_file $session
 # Decrypt a file
 echo ""
 echo "56 Get the document's metadata ---------------------------------------------------------------------------"
-output=$(./rep_get_doc_metadata "$session_file" "$document_name_new_2")
-echo "$output" | python3 -c "import sys, json, ast; json.dump(ast.literal_eval(sys.stdin.read()), sys.stdout)" > "$output_file_3"
-file_handle=$(echo "$output" | python3 -c "import sys, ast; print(ast.literal_eval(sys.stdin.read())['file_handle'])")
+./rep_get_doc_metadata "$session_file" "$document_name_new_2" > file
+file_handle=$(jq -r '.file_handle' file)
+echo "$file_handle"
 
 run_test success "56(1). Get a file from its file_handle" ./rep_get_file "$file_handle" "$output_file_2"
-run_test success "56(2). Decrypt a file" ./rep_decrypt_file "$output_file_2" "$output_file_3"
+run_test success "56(2). Decrypt a file" ./rep_decrypt_file "$output_file_2" file

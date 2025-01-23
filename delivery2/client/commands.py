@@ -48,8 +48,11 @@ class Local(Command):
         self.logger.debug(f'Public key stored in credentials file: {credentials_file}')
     
     def rep_decrypt_file(self, encrypted_file, encryption_metadata):
-        with open(encryption_metadata, 'r') as f:
-            metadata = json.load(f)
+        try:
+            with open(encryption_metadata, 'r') as f:
+                metadata = json.load(f)
+        except Exception as e:
+            raise Exception(f'Failed to read encryption metadata file.')
         
         key = bytes.fromhex(metadata['key'])
         alg = metadata['alg']
@@ -724,7 +727,7 @@ class Organization(Command):
         )
 
         if output:
-            print(result)
+            sys.stdout.buffer.write(json.dumps(result).encode())
 
         return result
         

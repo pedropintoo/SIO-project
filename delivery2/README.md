@@ -3,7 +3,7 @@
 ## Group members
 
 - 113893 - Guilherme Santos
-- 104383 - João Pinto
+- 104384 - João Pinto
 - 115304 - Pedro Pinto
 
 We mantained the same structure as in the previous delivery.
