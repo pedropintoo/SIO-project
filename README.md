@@ -1,3 +1,12 @@
+# 3ano/1semestre/SIO/SIO-project
+
+# Nota: 19.8
+
+Pedro Pinto (115304)
+
+Guilherme Santos (113893)
+
+João Pinto (104383)
 
 # Delivery 2
 
